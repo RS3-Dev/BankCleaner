@@ -1,33 +1,59 @@
 # Bank Cleaner
 
-Preservation snapshot extracted from [Bank Utilities](https://github.com/RS3-Dev/bank-utilities/tree/beba274b57853d444c7017eaa9c813273f222475) at commit `beba274b57853d444c7017eaa9c813273f222475`.
+Bank Cleaner (`bankcleaner`) is a standalone plugin that shows which bank items belong in other storage: the metal bank, tool leprechaun, clue carrier, focus storage, ore and wood boxes, player-owned house storage, and finished quests' items. It runs on [Bank Utilities Core](https://github.com/RS3-Dev/bank-utilities) (`bankcore`) and reaches the bank only through Bank Core's public extension API: no private Core module or native bank component is used. What it uses from Bank Core is in [CONTRACT.md](CONTRACT.md); the plan it was built from is in [docs/STANDALONE_PLAN.md](docs/STANDALONE_PLAN.md).
 
-**This is not yet an installable standalone plugin.** No production entry point or plugin manifest has been invented. Original source bytes, module paths, function names, and storage keys are preserved.
+Everything here is checked against Bank Core's stand-in host only. Nothing in this repository has been verified in the live client yet; see [Not yet verified live](#not-yet-verified-live).
 
-## Contents
+## Features
 
-- `lib/` and, where required, `data/`: feature modules and the complete transitive closure of their literal Lua `require` dependencies.
-- `tests/`: existing tests that run independently against these modules.
-- `reference/integration/`: unchanged copies of the mixed application, feature lifecycle, sidebar, menu, settings, and original entry/manifest. These preserve behavior that cannot yet be separated without implementation. They are reference material, not a second runnable application.
-- `reference/tests/`: original integration tests to port when Core contracts are ready. They still need the original repository's harness and are not standalone checks.
-- `reference/HOST_CONTRACT.md`: host and API assumptions at the source revision.
-- `EXTRACTION_MANIFEST.json`: source revision, original paths, extraction roles, byte lengths, and SHA-256 hashes for every copied file.
+- **Cleanup tab.** A sidebar tab of rows grouped under Review, Utility storage, and Player-owned house, one per category, each with the number of matching stacks in the bank, or `...` while new items are being checked.
+- **Category pages.** Choosing a row shows that category's items through a Bank Core page: the category's name as a label, then exactly the stacks the bank holds now, in bank order. Focus Storage and Spirits show each section under its own label (Focus: Recommended, Focus: Optional; Stone Spirits (ore box), Wood Spirits (wood box)), leaving out an empty section. An empty category says "None of these items are in your bank."
+- **Quest items** appear only when every quest the item belongs to is confirmed finished; anything the client cannot confirm stays out.
+- **Live pages.** A withdrawn item leaves its page as soon as Bank Core reports the bank changed; a deposited item joins once it has been checked. Choosing the Cleanup tab checks every item and quest again.
+- **Plugin panel.** Says whether Bank Cleaner is in the bank, or that Bank Core is needed.
 
-## Remaining integration work
+## Requirements and load order
 
-- Preserves Cleanup classification, sections, quest checks, and all statically required data catalogs; it has no RuneQL dependency.
-- The original Cleanup object forwards ordinary tag lookups to its userStore. That mixed facade has not been removed.
-- Its page descriptor expects the legacy layout.features.cleanupCategories and page-state methods, not a standalone public extension adapter.
-- The batched scan driver, activation, and inventory-change wiring remain in the mixed integration references. There is no standalone event loop yet.
+- **PrettyUI** is a required dependency.
+- **Bank Core** (`bankcore`) is needed for anything in the bank. It is declared as an optional dependency only because the host reports changes for optional dependencies. Without it, Bank Cleaner loads and its panel says Bank Core is needed.
 
-No user saves, credentials, client files, build output, or external dependency source were copied. The original Bank Utilities source is intact. API wiring, migration, naming, and shared settings are future work.
+Any load order works: Bank Cleaner connects when Bank Core loads, reconnects when Bank Core reloads, and lets go when Bank Core unloads, through the host's `PluginDependencyUpdate`. Reloading Bank Cleaner shuts down the previous copy in the same Lua state first; a copy whose owner ID a newer load took stays idle.
 
-## Checks
+**Old installs.** The old integrated `bankutils` plugin (and the older `bankutilities`) also had a Cleanup tab. They are not expected to work against this Bank Core, whose private bridge they used was removed; disable them so the cleanup views are not loaded twice.
 
-Every copied file was verified against its committed source bytes, and all copied Lua files were syntax-checked with Lua 5.4. These isolated tests were also run:
+## Saved data
+
+Bank Cleaner saves nothing. It has no preferences, so it adds no section to Bank Core's settings window.
+
+## Changes from the old integrated plugin
+
+- Pages show only the stacks the bank holds, from the same bank snapshot, and follow every bank change; the old plugin kept withdrawn items as ghosts until the category was scanned again.
+- Each category is introduced by Bank Core's standard label row, as Bank Tags' labels are; the old custom page heading is gone.
+- Placeholders never appear.
+- The Cleanup tab has no search box; its 13 rows fit without one.
+- Items are checked once each and remembered until the Cleanup tab is chosen again, so a bank change rechecks only new items.
+
+## Layout
+
+- `plugins/bankcleaner/`: the entry (`main.lua`) and manifest.
+- `bankcleaner/`: every runtime module. All require paths start with `bankcleaner/`. The catalogs in `bankcleaner/data/` are unchanged from Bank Utilities.
+- `tools/`: the build and check tools, adapted from Bank Tags', and the test harness that loads Bank Core beside Bank Cleaner.
+- `tests/`: the tests; see [tests/README.md](tests/README.md).
+- `reference/`: the preserved source from Bank Utilities `beba274`, kept as an archive; see [reference/README.md](reference/README.md). `EXTRACTION_MANIFEST.json` records where each preserved file came from.
+
+## Build and check
 
 ```text
-lua54 tests/cleanup_categories_test.lua
+lua54 tools/build.lua
+lua54 tools/check.lua
 ```
 
-These checks establish preservation and the listed isolated behaviors, not live or standalone plugin functionality. Reference integration tests must be ported before claiming behavior parity.
+The build writes only `dist/bankcleaner/`: `main.lua`, `plugin.json`, and the modules the entry's require graph loads, with the entry's module eviction list generated from that graph. It refuses output paths inside the source tree and removes only what its previous build wrote. The check builds into `dist/check`, runs every test, compiles every built file, and fails on unexpected globals, a runtime source the entry never loads, or anything from `reference/`, `tests/`, or `tools/` in the package. Tests that load Bank Core read it from `BANKCORE_ROOT`, which must be set.
+
+To install, copy `dist/bankcleaner/` into the client's plugins folder as `bankcleaner`.
+
+## Not yet verified live
+
+- When the host calls `PluginDependencyUpdate` on reloads, whether it re-injects the global, how it clones exports, and whether module caches are scoped per plugin.
+- How Bank Core's label rows and the `...` row detail look in the live bank, and how fast a large category page draws.
+- Quest completion as `config.Quest.FromID(id).hasFinishedQuest` reports it, unchanged from the old plugin.
