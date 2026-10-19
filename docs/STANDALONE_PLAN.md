@@ -66,3 +66,22 @@ Each stage passes `lua54 tools/check.lua`, and Bank Core's and Bank Tags' trees 
 ## Not verified live
 
 Persistent data scoping (Bank Cleaner saves nothing), when the host calls `PluginDependencyUpdate` on reloads, how the host clones exports, and how label rows and 80-character labels look in the live bank.
+
+## Results
+
+All stages are implemented on `feature/standalone-plugin`, each in its own commit, with `tools/check.lua` passing at every stage against Bank Core `2e4941e` read from `BANKCORE_ROOT`. Bank Core and Bank Tags were only read; their trees were checked unchanged after every stage. Nothing has been verified in the live client.
+
+| | Lua files | Lines |
+| --- | ---: | ---: |
+| Built `dist/release/bankcleaner` (entry, 3 modules, 15 unchanged catalogs, plus `plugin.json`) | 19 | 5,028 |
+| of which catalogs | 15 | 4,243 |
+| Runtime source outside the catalogs (`app`, `categories`, `pages`, entry) | 4 | 768 |
+| Tests and tools | 9 | 1,259 |
+
+Tests: `cleanup_categories_test` (every rule, present stacks only, sections, the quest rule failing closed, the batch limit, the cache, forgetting it), `cleanup_pages_test` (page and tab encoding), `cleanup_app_test` (the real Bank Core: tab rows and counts, pages of exact stacks under standard labels with no heading, unchanged pages not sent, withdrawal, new objects, coalesced generations mid-scan, the scan only while in view, forgetting on tab choice, the bank closing), and `plugin_reload_test` (load orders, Core reloading, cloned and unloading, the plugin reloading shared, separate, and hot, and a replaced owner staying idle). Advanced Bank Search's `combined_plugins_test` loads this plugin's build beside it.
+
+Found during implementation and left for review:
+
+- Empty pages first said "Scanning bank..." whenever a new object was being classified, which changed every empty page for each deposit; they now say it only until the first scan since the bank opened or the tab was chosen.
+- The build's default `dist` output refused to build once the check had written `dist/check`; Bank Tags' build has the same default. The release output is now `dist/release`.
+- Every original file in `EXTRACTION_MANIFEST.json` has a byte-identical copy in the repository: unchanged catalogs in `bankcleaner/data/`, and the adapted `cleanup_categories.lua` and its test in `reference/preserved/`.
