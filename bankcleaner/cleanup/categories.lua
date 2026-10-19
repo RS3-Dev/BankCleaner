@@ -221,6 +221,9 @@ function Categories.new(options)
         -- The bank snapshot the members come from, and the objects in it still unclassified
         snapshot = nil,
         pending = nil,
+        -- Whether every object has been classified once since the snapshot was dropped or
+        -- the classifications forgotten
+        scanned = false,
     }, Categories)
 end
 
@@ -255,11 +258,12 @@ end
 function Categories:Observe(snapshot)
     self.snapshot = snapshot
     self.pending = unclassified(self)
+    if self.pending == nil then self.scanned = true end
 end
 
 -- Drop the snapshot and any scan, as when the bank closes; classifications are kept
 function Categories:Clear()
-    self.snapshot, self.pending = nil, nil
+    self.snapshot, self.pending, self.scanned = nil, nil, false
 end
 
 -- Forget every classification and quest status so the next scan reads them again
@@ -267,6 +271,7 @@ function Categories:Forget()
     self.classes = {}
     self.context.questStatus = {}
     self.pending = unclassified(self)
+    self.scanned = self.snapshot ~= nil and self.pending == nil
 end
 
 -- Report whether the snapshot has objects still to classify
@@ -277,6 +282,12 @@ end
 -- Report whether a snapshot has been observed
 function Categories:HasSnapshot()
     return self.snapshot ~= nil
+end
+
+-- Report whether a first scan has finished since the snapshot was dropped or the
+-- classifications forgotten; later scans only add new objects
+function Categories:HasScanned()
+    return self.scanned
 end
 
 -- Evaluate every category's rule for one object and cache the result
@@ -297,7 +308,7 @@ function Categories:Step(limit)
     for index = pending.index, last do classify(self, pending.objects[index]) end
     pending.index = last + 1
     if pending.index <= #pending.objects then return false end
-    self.pending = nil
+    self.pending, self.scanned = nil, true
     return true
 end
 

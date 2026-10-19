@@ -77,15 +77,16 @@ assert(table.concat(labels, ";") == table.concat({
 
 local cleanup = Categories.new(CATALOGS)
 -- Nothing observed: nothing to scan and no members
-assert(not cleanup:IsScanning() and not cleanup:HasSnapshot() and cleanup:Step() == true)
+assert(not cleanup:IsScanning() and not cleanup:HasSnapshot() and not cleanup:HasScanned())
+assert(cleanup:Step() == true)
 assert(listed(cleanup:Members(), "quest_items") == "")
 
 -- 100's second stack is a placeholder; 103 sits before 102, so bank order decides members
 cleanup:Observe(snapshot(1, { { 100, 1 }, { 101, 1 }, { 103, 4 }, { 102, 1 }, { 100, 0 } }))
-assert(cleanup:IsScanning())
+assert(cleanup:IsScanning() and not cleanup:HasScanned())
 -- Until classified, objects are in no category
 assert(listed(cleanup:Members(), "metal_bank") == "")
-assert(cleanup:Step() == true and not cleanup:IsScanning())
+assert(cleanup:Step() == true and not cleanup:IsScanning() and cleanup:HasScanned())
 local members = cleanup:Members()
 
 -- Quest items need every quest finished: 101 needs quest 2, which is not
@@ -119,7 +120,9 @@ assert(listed(members, "quest_items") == "100:1 103:1 103:2")
 assert(listed(members, "toy_box") == "103:1 103:2")
 
 -- The quest rule fails closed: no quests, an unreadable quest, or no quest config
+-- A later scan only adds new objects; the first scan stays finished
 cleanup:Observe(snapshot(3, { { 105, 1 }, { 106, 1 } }))
+assert(cleanup:IsScanning() and cleanup:HasScanned())
 assert(cleanup:Step() == true)
 assert(listed(cleanup:Members(), "quest_items") == "")
 local saved = config
@@ -156,14 +159,16 @@ quests[2].hasFinishedQuest = true
 cleanup:Observe(snapshot(4, { { 101, 1 }, { 100, 1 } }))
 assert(not cleanup:IsScanning() and listed(cleanup:Members(), "quest_items") == "100:1")
 cleanup:Forget()
-assert(cleanup:IsScanning() and listed(cleanup:Members(), "quest_items") == "")
+assert(cleanup:IsScanning() and not cleanup:HasScanned() and listed(cleanup:Members(), "quest_items") == "")
 cleanup:Step()
 assert(listed(cleanup:Members(), "quest_items") == "101:1 100:1")
 
 -- Clearing drops the snapshot and its scan but keeps classifications
 cleanup:Clear()
-assert(not cleanup:HasSnapshot() and not cleanup:IsScanning() and listed(cleanup:Members(), "quest_items") == "")
+assert(not cleanup:HasSnapshot() and not cleanup:IsScanning() and not cleanup:HasScanned())
+assert(listed(cleanup:Members(), "quest_items") == "")
+-- A snapshot of objects already classified needs no scan at all
 cleanup:Observe(snapshot(5, { { 101, 1 } }))
-assert(not cleanup:IsScanning() and listed(cleanup:Members(), "quest_items") == "101:1")
+assert(not cleanup:IsScanning() and cleanup:HasScanned() and listed(cleanup:Members(), "quest_items") == "101:1")
 
 print("cleanup_categories_test: ok")
