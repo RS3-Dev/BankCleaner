@@ -1,5 +1,4 @@
-package.path = "./plugins/bankutilities/?.lua;./plugins/bankutilities/?/init.lua;"
-    .. package.path
+package.path = "./?.lua;" .. package.path
 
 local quests = {
     [1] = { hasFinishedQuest = true },
@@ -18,7 +17,7 @@ local userStore = {
     GetLayout = function() return {} end,
 }
 
-local CleanupCategories = require("lib/features/cleanup/cleanup_categories")
+local CleanupCategories = require("bankcleaner/cleanup/categories")
 local cleanup = CleanupCategories.new(userStore, {
     objectQuests = {
         [100] = { 1 },

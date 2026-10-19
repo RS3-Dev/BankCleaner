@@ -1,0 +1,14 @@
+{
+  "name": "bankcleaner",
+  "version": "0.1.0",
+  "description": "Bank Cleaner: pages of bank items that belong in house, utility, and quest storage. Requires Bank Core.",
+  "hasRibbonIcon": true,
+  "dependencies": {
+    "prettyui": 6398181
+  },
+  "optionalDependencies": {
+    "bankcore": "bankcore"
+  },
+  "requiredPermissions": [],
+  "optionalPermissions": []
+}

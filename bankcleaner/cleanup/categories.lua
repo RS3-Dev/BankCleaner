@@ -3,23 +3,23 @@
 local CleanupCategories = {}
 CleanupCategories.__index = CleanupCategories
 
-local DefaultObjectQuests = require("data/object_quests")
-local DefaultMetalBankObjects = require("data/metal_bank_objects")
-local DefaultTreasureChestObjects = require("data/treasure_chest_objects")
-local DefaultClueCarrierObjects = require("data/clue_carrier_objects")
-local DefaultArmourCaseObjects = require("data/armour_case_objects")
-local DefaultMagicWardrobeObjects = require("data/magic_wardrobe_objects")
-local DefaultCapeStoreObjects = require("data/cape_store_objects")
-local DefaultToolLeprechaunObjects = require("data/tool_leprechaun_objects")
-local DefaultToyBoxObjects = require("data/toy_box_objects")
-local DefaultFancyDressBoxObjects = require("data/fancy_dress_box_objects")
-local DefaultBookcaseObjects = require("data/bookcase_objects")
+local DefaultObjectQuests = require("bankcleaner/data/object_quests")
+local DefaultMetalBankObjects = require("bankcleaner/data/metal_bank_objects")
+local DefaultTreasureChestObjects = require("bankcleaner/data/treasure_chest_objects")
+local DefaultClueCarrierObjects = require("bankcleaner/data/clue_carrier_objects")
+local DefaultArmourCaseObjects = require("bankcleaner/data/armour_case_objects")
+local DefaultMagicWardrobeObjects = require("bankcleaner/data/magic_wardrobe_objects")
+local DefaultCapeStoreObjects = require("bankcleaner/data/cape_store_objects")
+local DefaultToolLeprechaunObjects = require("bankcleaner/data/tool_leprechaun_objects")
+local DefaultToyBoxObjects = require("bankcleaner/data/toy_box_objects")
+local DefaultFancyDressBoxObjects = require("bankcleaner/data/fancy_dress_box_objects")
+local DefaultBookcaseObjects = require("bankcleaner/data/bookcase_objects")
 local DefaultFocusRecommendedObjects = require(
-    "data/focus_storage_recommended_objects"
+    "bankcleaner/data/focus_storage_recommended_objects"
 )
-local DefaultFocusOptionalObjects = require("data/focus_storage_optional_objects")
-local DefaultStoneSpiritObjects = require("data/stone_spirit_objects")
-local DefaultWoodSpiritObjects = require("data/wood_spirit_objects")
+local DefaultFocusOptionalObjects = require("bankcleaner/data/focus_storage_optional_objects")
+local DefaultStoneSpiritObjects = require("bankcleaner/data/stone_spirit_objects")
+local DefaultWoodSpiritObjects = require("bankcleaner/data/wood_spirit_objects")
 
 local PREFIX = "__bankutils_cleanup:"
 
