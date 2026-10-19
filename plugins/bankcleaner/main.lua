@@ -1,4 +1,4 @@
--- Start Bank Cleaner. This stage only loads the cleanup categories; the connection to Bank
+-- Start Bank Cleaner. This stage only loads the cleanup categories and pages; the connection to Bank
 -- Core comes later
 
 -- The host retains modules across reloads; evict this plugin's cache to keep callbacks current.
@@ -11,4 +11,4 @@ if package ~= nil and package.loaded ~= nil then
     end
 end
 
-require("bankcleaner/cleanup/categories")
+require("bankcleaner/cleanup/pages")

@@ -66,9 +66,13 @@ for _, path in ipairs(trackedFiles('"plugins/*.lua"', '"bankcleaner/*.lua"')) do
 end
 
 -- Say which Bank Core the tests load, since they run against whatever checkout that is
-local coreRoot = os.getenv("BANKCORE_ROOT") or "(BANKCORE_ROOT is not set)"
-local _, coreHead = run('git -C "' .. coreRoot .. '" log -1 --format="%h %s"')
-print("Bank Core for tests: " .. coreRoot .. " at " .. (coreHead:match("[^\r\n]+") or "unknown"))
+local coreRoot = os.getenv("BANKCORE_ROOT")
+if coreRoot == nil then
+    print("Bank Core for tests: BANKCORE_ROOT is not set, so tests that load Bank Core fail")
+else
+    local _, coreHead = run('git -C "' .. coreRoot .. '" log -1 --format="%h %s"')
+    print("Bank Core for tests: " .. coreRoot .. " at " .. (coreHead:match("[^\r\n]+") or "unknown"))
+end
 
 local tests = trackedFiles('"tests/*_test.lua"')
 for _, path in ipairs(tests) do

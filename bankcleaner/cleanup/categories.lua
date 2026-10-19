@@ -1,7 +1,10 @@
--- Build temporary cleanup views from generated catalogs and confirmed quest progress
+-- Classify bank objects into cleanup categories from generated catalogs and confirmed quest
+-- progress, and list the present stacks of each category from one bank snapshot. Every rule
+-- reads only the object ID, so each object is classified once and cached; only objects not
+-- seen before are evaluated, a bounded batch at a time
 
-local CleanupCategories = {}
-CleanupCategories.__index = CleanupCategories
+local Categories = {}
+Categories.__index = Categories
 
 local DefaultObjectQuests = require("bankcleaner/data/object_quests")
 local DefaultMetalBankObjects = require("bankcleaner/data/metal_bank_objects")
@@ -20,8 +23,6 @@ local DefaultFocusRecommendedObjects = require(
 local DefaultFocusOptionalObjects = require("bankcleaner/data/focus_storage_optional_objects")
 local DefaultStoneSpiritObjects = require("bankcleaner/data/stone_spirit_objects")
 local DefaultWoodSpiritObjects = require("bankcleaner/data/wood_spirit_objects")
-
-local PREFIX = "__bankutils_cleanup:"
 
 -- Read a host field that can be unavailable while configuration loads
 local function read(value, field)
@@ -97,87 +98,75 @@ end
 
 local DEFINITIONS = {
     {
-        id = PREFIX .. "quest_items",
+        id = "quest_items",
         label = "Quest Items",
         group = "Review",
-        ruleVersion = 2,
         evaluate = questItems,
     },
     {
-        id = PREFIX .. "metal_bank",
+        id = "metal_bank",
         label = "Metal Bank",
         group = "Utility storage",
-        ruleVersion = 1,
         evaluate = catalogItems("metalBankObjects", "metal_bank_storable"),
     },
     {
-        id = PREFIX .. "treasure_chest",
+        id = "treasure_chest",
         label = "Treasure Chest",
         group = "Player-owned house",
-        ruleVersion = 1,
         evaluate = catalogItems("treasureChestObjects", "treasure_chest_storable"),
     },
     {
-        id = PREFIX .. "clue_carrier",
+        id = "clue_carrier",
         label = "Clue Carrier",
         group = "Utility storage",
-        ruleVersion = 1,
         evaluate = catalogItems("clueCarrierObjects", "clue_carrier_storable"),
     },
     {
-        id = PREFIX .. "armour_case",
+        id = "armour_case",
         label = "Armour Case",
         group = "Player-owned house",
-        ruleVersion = 1,
         evaluate = catalogItems("armourCaseObjects", "armour_case_storable"),
     },
     {
-        id = PREFIX .. "magic_wardrobe",
+        id = "magic_wardrobe",
         label = "Magic Wardrobe",
         group = "Player-owned house",
-        ruleVersion = 1,
         evaluate = catalogItems("magicWardrobeObjects", "magic_wardrobe_storable"),
     },
     {
-        id = PREFIX .. "cape_store",
+        id = "cape_store",
         label = "Cape Store",
         group = "Player-owned house",
-        ruleVersion = 1,
         evaluate = catalogItems("capeStoreObjects", "cape_store_storable"),
     },
     {
-        id = PREFIX .. "tool_leprechaun",
+        id = "tool_leprechaun",
         label = "Tool Leprechaun",
         group = "Utility storage",
-        ruleVersion = 1,
         evaluate = catalogItems("toolLeprechaunObjects", "tool_leprechaun_storable"),
     },
     {
-        id = PREFIX .. "toy_box",
+        id = "toy_box",
         label = "Toy Box",
         group = "Player-owned house",
-        ruleVersion = 1,
         evaluate = catalogItems("toyBoxObjects", "toy_box_storable"),
     },
     {
-        id = PREFIX .. "fancy_dress_box",
+        id = "fancy_dress_box",
         label = "Fancy Dress Box",
         group = "Player-owned house",
-        ruleVersion = 1,
         evaluate = catalogItems("fancyDressBoxObjects", "fancy_dress_box_storable"),
     },
     {
-        id = PREFIX .. "bookcase",
+        id = "bookcase",
         label = "Bookcase",
         group = "Player-owned house",
-        ruleVersion = 1,
         evaluate = catalogItems("bookcaseObjects", "bookcase_storable"),
     },
     {
-        id = PREFIX .. "focus_storage",
+        id = "focus_storage",
         label = "Focus Storage",
         group = "Utility storage",
-        ruleVersion = 1,
         evaluate = focusStorageItems,
         sections = {
             { id = "recommended", label = "Focus: Recommended" },
@@ -185,10 +174,9 @@ local DEFINITIONS = {
         },
     },
     {
-        id = PREFIX .. "spirits",
+        id = "spirits",
         label = "Spirits",
         group = "Utility storage",
-        ruleVersion = 1,
         evaluate = spiritStorageItems,
         sections = {
             { id = "stone", label = "Stone Spirits (ore box)" },
@@ -197,365 +185,137 @@ local DEFINITIONS = {
     },
 }
 
--- Copy top-level category entries while retaining untouched published results
-local function copyMap(source)
-    local result = {}
-    for key, value in pairs(source or {}) do result[key] = value end
-    return result
-end
+-- The categories' group headings, in the order the tab shows them
+Categories.GROUPS = { "Review", "Utility storage", "Player-owned house" }
+Categories.DEFINITIONS = DEFINITIONS
+-- Objects classified per logic tick, as the integrated plugin's scan did
+Categories.BATCH = 25
 
--- Compare item IDs and quantity groups so UI-only rebuilds do not invalidate cleanup results
-local function itemSignature(items)
-    local quantitiesByObject = {}
-    for _, item in ipairs(items or {}) do
-        local objectID = math.tointeger(tonumber(item.objectID))
-        if objectID ~= nil and objectID >= 0 then
-            local quantities = quantitiesByObject[objectID]
-            if quantities == nil then
-                quantities = {}
-                quantitiesByObject[objectID] = quantities
-            end
-            quantities[#quantities + 1] = tonumber(item.quantity) or 0
-        end
-    end
+local CATALOGS = {
+    objectQuests = DefaultObjectQuests,
+    metalBankObjects = DefaultMetalBankObjects,
+    treasureChestObjects = DefaultTreasureChestObjects,
+    clueCarrierObjects = DefaultClueCarrierObjects,
+    armourCaseObjects = DefaultArmourCaseObjects,
+    magicWardrobeObjects = DefaultMagicWardrobeObjects,
+    capeStoreObjects = DefaultCapeStoreObjects,
+    toolLeprechaunObjects = DefaultToolLeprechaunObjects,
+    toyBoxObjects = DefaultToyBoxObjects,
+    fancyDressBoxObjects = DefaultFancyDressBoxObjects,
+    bookcaseObjects = DefaultBookcaseObjects,
+    focusRecommendedObjects = DefaultFocusRecommendedObjects,
+    focusOptionalObjects = DefaultFocusOptionalObjects,
+    stoneSpiritObjects = DefaultStoneSpiritObjects,
+    woodSpiritObjects = DefaultWoodSpiritObjects,
+}
 
-    local objectIDs = {}
-    for objectID in pairs(quantitiesByObject) do
-        objectIDs[#objectIDs + 1] = objectID
-    end
-    table.sort(objectIDs)
-
-    local parts = {}
-    for _, objectID in ipairs(objectIDs) do
-        local quantities = quantitiesByObject[objectID]
-        table.sort(quantities)
-        local values = {}
-        for index, quantity in ipairs(quantities) do
-            values[index] = tostring(quantity)
-        end
-        parts[#parts + 1] = tostring(objectID) .. ":" .. table.concat(values, ",")
-    end
-    return table.concat(parts, ";")
-end
-
--- Check the category ID against the supported cleanup definitions
-local function knownCategory(categoryID)
-    for _, definition in ipairs(DEFINITIONS) do
-        if definition.id == categoryID then return true end
-    end
-    return false
-end
-
--- Load cleanup catalogs and initialize the published and pending category state
-function CleanupCategories.new(userStore, options)
+-- Load the catalogs, any replaced by options for tests, with nothing classified
+function Categories.new(options)
     options = options or {}
+    local context = { questStatus = {} }
+    for name, catalog in pairs(CATALOGS) do context[name] = options[name] or catalog end
     return setmetatable({
-        userStore = userStore,
-        objectQuests = options.objectQuests or DefaultObjectQuests,
-        metalBankObjects = options.metalBankObjects or DefaultMetalBankObjects,
-        treasureChestObjects = options.treasureChestObjects
-            or DefaultTreasureChestObjects,
-        clueCarrierObjects = options.clueCarrierObjects or DefaultClueCarrierObjects,
-        armourCaseObjects = options.armourCaseObjects or DefaultArmourCaseObjects,
-        magicWardrobeObjects = options.magicWardrobeObjects
-            or DefaultMagicWardrobeObjects,
-        capeStoreObjects = options.capeStoreObjects or DefaultCapeStoreObjects,
-        toolLeprechaunObjects = options.toolLeprechaunObjects
-            or DefaultToolLeprechaunObjects,
-        toyBoxObjects = options.toyBoxObjects or DefaultToyBoxObjects,
-        fancyDressBoxObjects = options.fancyDressBoxObjects
-            or DefaultFancyDressBoxObjects,
-        bookcaseObjects = options.bookcaseObjects or DefaultBookcaseObjects,
-        focusRecommendedObjects = options.focusRecommendedObjects
-            or DefaultFocusRecommendedObjects,
-        focusOptionalObjects = options.focusOptionalObjects
-            or DefaultFocusOptionalObjects,
-        stoneSpiritObjects = options.stoneSpiritObjects
-            or DefaultStoneSpiritObjects,
-        woodSpiritObjects = options.woodSpiritObjects
-            or DefaultWoodSpiritObjects,
-        generation = 0,
-        memberships = {},
-        claims = {},
-        counts = {},
-        layouts = {},
-        dirty = {},
-        changeVersion = 0,
-        inventorySignature = nil,
+        context = context,
+        -- Each classified object's categories: category ID to its section, or true
+        classes = {},
+        -- The bank snapshot the members come from, and the objects in it still unclassified
+        snapshot = nil,
         pending = nil,
-    }, CleanupCategories)
+    }, Categories)
 end
 
--- Recognize cleanup selection IDs that stay outside persistent user tags
-function CleanupCategories:IsGenerated(categoryID)
-    return type(categoryID) == "string"
-        and string.sub(categoryID, 1, #PREFIX) == PREFIX
-end
-
--- Find the display label for a supported cleanup category
-function CleanupCategories:Label(categoryID)
+-- Find a category's definition by its ID
+function Categories.Definition(categoryID)
     for _, definition in ipairs(DEFINITIONS) do
-        if definition.id == categoryID then return definition.label end
+        if definition.id == categoryID then return definition end
     end
     return nil
 end
 
--- Mark affected categories for regeneration and record that their source changed
-function CleanupCategories:MarkDirty(categoryID)
-    self.changeVersion = self.changeVersion + 1
-    for _, definition in ipairs(DEFINITIONS) do
-        if categoryID == nil or definition.id == categoryID then
-            self.dirty[definition.id] = true
+-- Report whether a stack is in the bank rather than a placeholder
+local function present(item)
+    return (tonumber(item.quantity) or 0) > 0
+end
+
+-- List the snapshot's present objects not yet classified, in bank order
+local function unclassified(self)
+    local pending, seen = {}, {}
+    for _, item in ipairs(self.snapshot ~= nil and self.snapshot.items or {}) do
+        local objectID = item.objectID
+        if present(item) and self.classes[objectID] == nil and not seen[objectID] then
+            seen[objectID] = true
+            pending[#pending + 1] = objectID
         end
     end
+    return #pending > 0 and { objects = pending, index = 1 } or nil
 end
 
--- Report whether a supported category needs to be rebuilt
-function CleanupCategories:IsDirty(categoryID)
-    return knownCategory(categoryID) and self.dirty[categoryID] == true
+-- Use a new bank snapshot, { generation, items } as Bank Core's GetBankItems gives it.
+-- Objects already classified count at once; the rest wait for Step
+function Categories:Observe(snapshot)
+    self.snapshot = snapshot
+    self.pending = unclassified(self)
 end
 
--- Invalidate categories only when item contents change rather than native component wrappers
-function CleanupCategories:ObserveItems(items)
-    local signature = itemSignature(items)
-    if self.inventorySignature == nil then
-        self.inventorySignature = signature
-        return false
-    end
-    if signature == self.inventorySignature then return false end
-
-    self.inventorySignature = signature
-    self:MarkDirty()
-    return true
+-- Drop the snapshot and any scan, as when the bank closes; classifications are kept
+function Categories:Clear()
+    self.snapshot, self.pending = nil, nil
 end
 
--- Discard generated results when leaving the bank and require a fresh category build
-function CleanupCategories:Reset()
-    self.generation = 0
-    self.memberships = {}
-    self.claims = {}
-    self.counts = {}
-    self.layouts = {}
-    self.inventorySignature = nil
-    self.pending = nil
-    self:MarkDirty()
+-- Forget every classification and quest status so the next scan reads them again
+function Categories:Forget()
+    self.classes = {}
+    self.context.questStatus = {}
+    self.pending = unclassified(self)
 end
 
--- Prepare a new category generation without replacing the currently published results
-function CleanupCategories:BeginRefresh(items, categoryID)
-    if categoryID ~= nil and not knownCategory(categoryID) then return false end
-    items = items or {}
-    -- The scan itself establishes the authoritative bank state for the
-    -- snapshot. Repeated UI-only inventory events after this point compare
-    -- equal and therefore cannot immediately dirty the result again
-    self.inventorySignature = itemSignature(items)
-    local targeted = categoryID ~= nil
-    local pending = {
-        generation = self.generation + 1,
-        items = items,
-        index = 1,
-        categoryID = categoryID,
-        changeVersion = self.changeVersion,
-        memberships = targeted and copyMap(self.memberships) or {},
-        claims = targeted and copyMap(self.claims) or {},
-        counts = targeted and copyMap(self.counts) or {},
-        layouts = targeted and copyMap(self.layouts) or {},
-        context = {
-            objectQuests = self.objectQuests,
-            metalBankObjects = self.metalBankObjects,
-            treasureChestObjects = self.treasureChestObjects,
-            clueCarrierObjects = self.clueCarrierObjects,
-            armourCaseObjects = self.armourCaseObjects,
-            magicWardrobeObjects = self.magicWardrobeObjects,
-            capeStoreObjects = self.capeStoreObjects,
-            toolLeprechaunObjects = self.toolLeprechaunObjects,
-            toyBoxObjects = self.toyBoxObjects,
-            fancyDressBoxObjects = self.fancyDressBoxObjects,
-            bookcaseObjects = self.bookcaseObjects,
-            focusRecommendedObjects = self.focusRecommendedObjects,
-            focusOptionalObjects = self.focusOptionalObjects,
-            stoneSpiritObjects = self.stoneSpiritObjects,
-            woodSpiritObjects = self.woodSpiritObjects,
-            questStatus = {},
-        },
-    }
+-- Report whether the snapshot has objects still to classify
+function Categories:IsScanning()
+    return self.pending ~= nil
+end
+
+-- Report whether a snapshot has been observed
+function Categories:HasSnapshot()
+    return self.snapshot ~= nil
+end
+
+-- Evaluate every category's rule for one object and cache the result
+local function classify(self, objectID)
+    local result = {}
     for _, definition in ipairs(DEFINITIONS) do
-        if not targeted or definition.id == categoryID then
-            pending.memberships[definition.id] = {}
-            pending.claims[definition.id] = {}
-            pending.counts[definition.id] = 0
-            pending.layouts[definition.id] = {}
-        end
+        local eligible, _, section = definition.evaluate(objectID, nil, self.context)
+        if eligible == true then result[definition.id] = section or true end
     end
-    self.pending = pending
-    return true
+    self.classes[objectID] = result
 end
 
--- Report whether the current batch build includes the requested category
-function CleanupCategories:IsRefreshing(categoryID)
-    if self.pending == nil then return false end
-    return categoryID == nil
-        or self.pending.categoryID == nil
-        or self.pending.categoryID == categoryID
-end
-
--- Discard an unfinished category build while keeping published results
-function CleanupCategories:CancelRefresh()
-    self.pending = nil
-end
-
--- Evaluate a bounded batch and publish the complete generation when all items are processed
-function CleanupCategories:StepRefresh(batchSize)
+-- Classify at most limit pending objects; returns true once none are left
+function Categories:Step(limit)
     local pending = self.pending
     if pending == nil then return true end
-    batchSize = math.max(1, math.min(tonumber(batchSize) or 25, 50))
-    local last = math.min(#pending.items, pending.index + batchSize - 1)
-    for itemIndex = pending.index, last do
-        local item = pending.items[itemIndex]
-        for _, definition in ipairs(DEFINITIONS) do
-            if pending.categoryID == nil or definition.id == pending.categoryID then
-                local membership = pending.memberships[definition.id]
-                local claims = pending.claims[definition.id]
-                local quantity = tonumber(item.quantity) or 0
-                if quantity > 0 and type(item.layoutKey) == "string" then
-                    local eligible, reason, section = definition.evaluate(
-                        item.objectID,
-                        item,
-                        pending.context
-                    )
-                    claims[item.layoutKey] = {
-                        eligible = eligible == true,
-                        reason = reason,
-                        objectID = item.objectID,
-                        layoutKey = item.layoutKey,
-                        ruleVersion = definition.ruleVersion,
-                        generation = pending.generation,
-                        section = section,
-                    }
-                    if eligible == true then
-                        membership[item.layoutKey] = true
-                        pending.counts[definition.id] = pending.counts[definition.id] + 1
-                        local layout = pending.layouts[definition.id]
-                        layout[#layout + 1] = {
-                            kind = "item",
-                            objectID = item.objectID,
-                            layoutKey = item.layoutKey,
-                            section = section,
-                        }
-                    end
-                end
-            end
-        end
-    end
+    local last = math.min(#pending.objects, pending.index + math.max(1, limit or Categories.BATCH) - 1)
+    for index = pending.index, last do classify(self, pending.objects[index]) end
     pending.index = last + 1
-    if pending.index <= #pending.items then return false end
-
-    for _, definition in ipairs(DEFINITIONS) do
-        if (pending.categoryID == nil or definition.id == pending.categoryID)
-            and type(definition.sections) == "table" then
-            local source = pending.layouts[definition.id] or {}
-            local grouped = {}
-            for _, section in ipairs(definition.sections) do
-                for _, slot in ipairs(source) do
-                    if slot.section == section.id then grouped[#grouped + 1] = slot end
-                end
-            end
-            pending.layouts[definition.id] = grouped
-        end
-    end
-
-    self.generation = pending.generation
-    self.memberships = pending.memberships
-    self.claims = pending.claims
-    self.counts = pending.counts
-    self.layouts = pending.layouts
-    if self.changeVersion == pending.changeVersion then
-        for _, definition in ipairs(DEFINITIONS) do
-            if pending.categoryID == nil or definition.id == pending.categoryID then
-                self.dirty[definition.id] = false
-            end
-        end
-    end
+    if pending.index <= #pending.objects then return false end
     self.pending = nil
     return true
 end
 
--- Complete a category build synchronously through the same batched evaluator
-function CleanupCategories:Refresh(items, categoryID)
-    self:BeginRefresh(items, categoryID)
-    while not self:StepRefresh(50) do end
-end
-
--- Build sidebar rows with counts and a visible in-progress indicator
-function CleanupCategories:Entries()
-    local entries = {}
-    for _, definition in ipairs(DEFINITIONS) do
-        local count = self.counts[definition.id] or 0
-        entries[#entries + 1] = {
-            id = definition.id,
-            label = definition.label .. (self:IsRefreshing(definition.id)
-                and "..." or (" (" .. tostring(count) .. ")")),
-            displayLabel = definition.label,
-            group = definition.group,
-            count = count,
-            ruleVersion = definition.ruleVersion,
-            refreshing = self:IsRefreshing(definition.id),
-        }
-    end
-    return entries
-end
-
--- Copy the display sections configured for a generated category
-function CleanupCategories:GetSections(categoryID)
-    for _, definition in ipairs(DEFINITIONS) do
-        if definition.id == categoryID and type(definition.sections) == "table" then
-            local sections = {}
-            for _, section in ipairs(definition.sections) do
-                sections[#sections + 1] = {
-                    id = section.id,
-                    label = section.label,
-                }
-            end
-            return sections
+-- List each category's members from the snapshot: present stacks of classified objects, as
+-- { objectID, copy, section } in bank order, under the category ID. Unclassified objects
+-- and placeholders are left out
+function Categories:Members()
+    local members = {}
+    for _, definition in ipairs(DEFINITIONS) do members[definition.id] = {} end
+    for _, item in ipairs(self.snapshot ~= nil and self.snapshot.items or {}) do
+        local classes = present(item) and self.classes[item.objectID] or nil
+        for categoryID, section in pairs(classes or {}) do
+            local list = members[categoryID]
+            list[#list + 1] = { objectID = item.objectID, copy = item.copy,
+                section = section ~= true and section or nil }
         end
     end
-    return {}
+    return members
 end
 
--- Title a generated category whose definition has no sections of its own
-function CleanupCategories:GetHeading(categoryID)
-    if not self:IsGenerated(categoryID) or #self:GetSections(categoryID) > 0 then
-        return nil
-    end
-    return self:Label(categoryID) or "Cleanup"
-end
-
--- Read generated membership or delegate ordinary tag membership to the user store
-function CleanupCategories:HasTag(tag, layoutKey)
-    if not self:IsGenerated(tag) then return self.userStore:HasTag(tag, layoutKey) end
-    local membership = self.memberships[tag]
-    return membership ~= nil and membership[layoutKey] == true
-end
-
--- Return page labels for ordinary tags; generated views use fixed sections
-function CleanupCategories:GetLabels(tag, columnCount)
-    if self:IsGenerated(tag) then return {} end
-    return self.userStore:GetLabels(tag, columnCount)
-end
-
--- Copy generated layout slots or use the user store for ordinary tags
-function CleanupCategories:GetLayout(tag, columnCount)
-    if not self:IsGenerated(tag) then return self.userStore:GetLayout(tag, columnCount) end
-    local slots = {}
-    for _, slot in ipairs(self.layouts[tag] or {}) do
-        slots[#slots + 1] = {
-            kind = slot.kind,
-            objectID = slot.objectID,
-            layoutKey = slot.layoutKey,
-            section = slot.section,
-        }
-    end
-    return slots
-end
-
-return CleanupCategories
+return Categories
