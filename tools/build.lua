@@ -3,13 +3,13 @@
 -- generated from that graph. Tests, tools, docs, and reference material never ship.
 -- Adapted from Bank Tags' build
 -- Usage, from the repository root:
---   lua54 tools/build.lua [--out dist]
+--   lua54 tools/build.lua [--out dist/release]
 
 local ModuleGraph = require("tools/module_graph")
 
 local Build = {}
 
-Build.DEFAULT_OUT = "dist"
+Build.DEFAULT_OUT = "dist/release"
 Build.MANIFEST = "build_manifest.lua"
 Build.PLUGIN = { name = "bankcleaner", entry = "plugins/bankcleaner/main",
     manifest = "plugins/bankcleaner/plugin.json" }
