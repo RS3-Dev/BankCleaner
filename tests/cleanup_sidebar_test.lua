@@ -1,0 +1,178 @@
+package.path = "./?.lua;./?/init.lua;" .. package.path
+
+-- Drive the Cleanup tab's folders through the real Bank Core: every folder open at first,
+-- categories indented under their folder, a folder click that only collapses or expands it,
+-- a collapsed folder outlined while it holds the shown category, counts kept current while
+-- collapsed, category rows that open and leave pages with the bank's View All guidance, the
+-- column fitted to a taller bank, and the collapsed folders kept across a bank close, a
+-- reload, and a refused save
+-- FAKE HOST: stand-in loader, components, and widgets, not the game client
+
+local Harness = require("tools/test_support/cleaner_harness")
+
+local BRONZE_BAR, IRON_BAR, EGG = 2349, 2351, 1944
+local SAVE_FAILED = "Bank Cleaner could not save which Cleanup folders are collapsed; they stay as shown until it reloads."
+local h = Harness.new("cleanup_sidebar")
+local host = h.bankHost
+host:SetItems({ { IRON_BAR, 5, "Iron bar" }, { EGG, 3, "Egg" } })
+h:LoadCore()
+h:LoadCleaner()
+local session, layout = h:OpenBank()
+local service = session.extensionPages
+local tabUpdates = 0
+local updateTab = service.UpdateTab
+service.UpdateTab = function(...)
+    tabUpdates = tabUpdates + 1
+    return updateTab(...)
+end
+h:ChooseTab("bankcleaner", "cleanup")
+h:Tick(4)
+local app = h:App()
+local Sidebar = h.cleaner.env.package.loaded["bankcleaner/cleanup/sidebar"]
+
+-- Find a drawn row by its entry ID
+local function row(entryID)
+    for _, value in ipairs(app.sidebar.list.rows) do
+        if value.entry.id == entryID then return value end
+    end
+    return nil
+end
+
+-- Report whether a row carries the gold selection frame
+local function framed(value)
+    for _, child in ipairs(value.root.children) do
+        if child.outlineThickness == 1 and not child.destroyed then return true end
+    end
+    return false
+end
+
+-- Describe the drawn rows: folders marked "#", "label=count" for categories, "*" if framed
+local function rows()
+    local parts = {}
+    for _, value in ipairs(app.sidebar.list.rows) do
+        local entry = value.entry
+        parts[#parts + 1] = (Sidebar.FolderOf(entry.id) ~= nil and "#" .. entry.label
+            or entry.label .. "=" .. value.count.content) .. (framed(value) and "*" or "")
+    end
+    return table.concat(parts, " ")
+end
+
+-- Click a row as the player does, then let Bank Core settle
+local function click(entryID)
+    assert(app.sidebar.list:Click(entryID), entryID)
+    h:Tick(2)
+end
+
+-- Every folder starts open, in the groups' order, inside Bank Core's mounted column
+assert(layout.tabMount ~= nil and app.sidebar ~= nil and app.sidebar.list.root.parent == app.sidebar.ctx.parent)
+assert(#app.sidebar.list.rows == 16)
+assert(string.sub(rows(), 1, 56) == "#Review (1) Quest Items=0 #Utility storage (5) Metal Ban", rows())
+assert(string.find(rows(), "Metal Bank=1 ", 1, true) and string.find(rows(), "#Player-owned house (7)", 1, true))
+-- Folder names and the categories beneath them start at the same indent, after the chevron
+-- side and the folder's left bar; each category has its count at the right
+local folder, category = row("folder:Utility storage"), row("metal_bank")
+assert(folder.label.x == 26 and category.label.x == 26)
+local chevron
+for _, child in ipairs(folder.root.children) do
+    if child.spriteID == id.Sprite.BANK_ARROW_UP_0 then chevron = child end
+end
+assert(chevron ~= nil and chevron.rotation == math.pi and chevron.clickthrough)
+assert(category.count.content == "1" and category.count.clickthrough)
+
+-- A folder click collapses it without opening or leaving a page, and saves the collapsed set
+click("folder:Utility storage")
+assert(layout.selectedTag == nil and app.shownPage == nil)
+assert(rows() == "#Review (1) Quest Items=0 #Utility storage (5) #Player-owned house (7) Treasure Chest=0 "
+    .. "Armour Case=0 Magic Wardrobe=0 Cape Store=0 Toy Box=0 Fancy Dress Box=0 Bookcase=0", rows())
+local saved = h.databases.bankcleaner.bankcleaner_folders
+assert(#saved.collapsed == 1 and saved.collapsed[1] == "Utility storage")
+for _, child in ipairs(row("folder:Utility storage").root.children) do
+    if child.spriteID == id.Sprite.BANK_ARROW_UP_0 then assert(child.rotation == math.pi * 1.5) end
+end
+click("folder:Utility storage")
+assert(#app.sidebar.list.rows == 16 and #h.databases.bankcleaner.bankcleaner_folders.collapsed == 0)
+
+-- A category click opens its page and frames its row; clicking it again leaves the page
+click("metal_bank")
+assert(app.shownPage == "metal_bank" and layout.pageState.view.key == "cleanup:metal_bank")
+assert(framed(row("metal_bank")) and not framed(row("folder:Utility storage")))
+-- Collapsing the shown category's folder keeps the page and moves the frame to the folder
+click("folder:Utility storage")
+assert(app.shownPage == "metal_bank" and framed(row("folder:Utility storage")), rows())
+assert(not framed(row("folder:Review")))
+
+-- Counts stay current while their folder is collapsed, redrawn without a tab update
+tabUpdates = 0
+host:Rebuild(function(specs)
+    specs[#specs + 1] = { BRONZE_BAR, 2, "Bronze bar" }
+    return specs
+end)
+layout:HandleInventoryUpdate()
+h:Tick(6)
+assert(not app:IsBusy() and tabUpdates == 0)
+click("folder:Utility storage")
+assert(row("metal_bank").count.content == "2" and framed(row("metal_bank")), rows())
+click("metal_bank")
+assert(app.shownPage == nil and layout.selectedTag == nil and not framed(row("metal_bank")))
+
+-- A refused page shows the bank's View All guidance and leaves no row selected
+local warnings = 0
+local warn = layout.ShowViewAllWarning
+layout.ShowViewAllWarning = function() warnings = warnings + 1 end
+layout.nativeViewAll = false
+click("spirits")
+assert(warnings == 1 and app.shownPage == nil and not framed(row("spirits")))
+layout.nativeViewAll = true
+layout.ShowViewAllWarning = warn
+
+-- A taller bank fits the list to the column once Bank Core's watch sees it
+local list = app.sidebar.list
+local height = host.window.content.height + 60
+host.window.content:SetSize(host.window.content.width, height)
+h:Tick(12)
+assert(app.sidebar.list == list and list.root.height == app.sidebar.ctx:GetBounds().height - 16)
+
+-- Closing the bank destroys the mounted rows; reopening draws them again, still collapsed
+click("folder:Player-owned house")
+local parent = app.sidebar.ctx.parent
+layout:Restore()
+h:Tick(2)
+assert(app.sidebar == nil and parent.destroyed)
+h:OpenBank()
+h:ChooseTab("bankcleaner", "cleanup")
+h:Tick(4)
+assert(app.sidebar ~= nil and app.sidebar.list ~= list)
+assert(string.sub(rows(), -23) == "#Player-owned house (7)" and #app.sidebar.list.rows == 9, rows())
+
+-- A reload reads the saved folders back
+h.host:Reload("bankcleaner", { freshEnvironment = true })
+h:Tick(4)
+app = h:App()
+assert(app.collapsed["Player-owned house"] and app.collapsed.Review == nil)
+assert(#app.sidebar.list.rows == 9, rows())
+-- Saved names that are not groups, or values that are not names, are ignored
+h.databases.bankcleaner.bankcleaner_folders = { collapsed = { "Bogus", 5, "Review" } }
+h.host:Reload("bankcleaner", { freshEnvironment = true })
+h:Tick(4)
+app = h:App()
+assert(app.collapsed.Review and app.collapsed.Bogus == nil and next(app.collapsed, next(app.collapsed)) == nil)
+h.databases.bankcleaner.bankcleaner_folders = "broken"
+h.host:Reload("bankcleaner", { freshEnvironment = true })
+assert(next(h:App().collapsed) == nil)
+h:Tick(4)
+app = h:App()
+
+-- A refused save keeps the folder as the player left it and says so on the plugin panel
+local panel = h:OpenContentPanel()
+h.host.rejectWrites = true
+click("folder:Review")
+assert(app.collapsed.Review and #app.sidebar.list.rows == 15 and app.saveFailure == SAVE_FAILED)
+assert(string.find(panel.children[1].content, SAVE_FAILED, 1, true))
+h.host.rejectWrites = false
+click("folder:Review")
+assert(app.collapsed.Review == nil and app.saveFailure == nil)
+assert(not string.find(panel.children[1].content, SAVE_FAILED, 1, true))
+
+h.host:Unload("bankcleaner")
+h.host:Unload("bankcore")
+print("cleanup_sidebar_test: ok")

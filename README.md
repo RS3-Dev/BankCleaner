@@ -6,8 +6,8 @@ Everything here is checked against Bank Core's stand-in host only. Nothing in th
 
 ## Features
 
-- **Cleanup tab.** A sidebar tab of rows grouped under Review, Utility storage, and Player-owned house, one per category, each with the number of matching stacks in the bank, or `...` while new items are being checked.
-- **Category pages.** Choosing a row shows that category's items through a Bank Core page: the category's name as a label, then exactly the stacks the bank holds now, in bank order. Focus Storage and Spirits show each section under its own label (Focus: Recommended, Focus: Optional; Stone Spirits (ore box), Wood Spirits (wood box)), leaving out an empty section. An empty category says "None of these items are in your bank."
+- **Cleanup tab.** A sidebar tab of folders, as in Bank Tags: Review, Utility storage, and Player-owned house, each with its number of categories. Clicking a folder collapses or expands it; every folder starts open. Inside a folder, one row per category with the number of matching stacks in the bank, or `...` while new items are being checked. The shown category's row is outlined, or its folder while that is collapsed.
+- **Category pages.** Choosing a category shows that category's items (choosing it again returns to the bank) through a Bank Core page: the category's name as a label, then exactly the stacks the bank holds now, in bank order. Focus Storage and Spirits show each section under its own label (Focus: Recommended, Focus: Optional; Stone Spirits (ore box), Wood Spirits (wood box)), leaving out an empty section. An empty category says "None of these items are in your bank."
 - **Quest items** appear only when every quest the item belongs to is confirmed finished; anything the client cannot confirm stays out.
 - **Live pages.** A withdrawn item leaves its page as soon as Bank Core reports the bank changed; a deposited item joins once it has been checked. Choosing the Cleanup tab checks every item and quest again.
 - **Plugin panel.** Says whether Bank Cleaner is in the bank, or that Bank Core is needed.
@@ -23,14 +23,14 @@ Any load order works: Bank Cleaner connects when Bank Core loads, reconnects whe
 
 ## Saved data
 
-Bank Cleaner saves nothing. It has no preferences, so it adds no section to Bank Core's settings window.
+Bank Cleaner saves only which Cleanup folders are collapsed, under `bankcleaner_folders` as `{ collapsed = { <group>, ... } }`; names that are not current groups are ignored on load. If the client refuses the save, the folder stays as the player left it until Bank Cleaner reloads, and the plugin panel says so. It has no preferences, so it adds no section to Bank Core's settings window.
 
 ## Changes from the old integrated plugin
 
 - Pages show only the stacks the bank holds, from the same bank snapshot, and follow every bank change; the old plugin kept withdrawn items as ghosts until the category was scanned again.
 - Each category is introduced by Bank Core's standard label row, as Bank Tags' labels are; the old custom page heading is gone.
 - Placeholders never appear.
-- The Cleanup tab has no search box; its 13 rows fit without one.
+- The Cleanup tab has no search box; its 13 categories fit without one. Its groups are folders that collapse, drawn by Bank Cleaner in its own column rather than as Bank Core's plain rows.
 - Items are checked once each and remembered until the Cleanup tab is chosen again, so a bank change rechecks only new items.
 
 ## Layout

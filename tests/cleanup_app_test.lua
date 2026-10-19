@@ -1,7 +1,7 @@
 package.path = "./?.lua;./?/init.lua;" .. package.path
 
--- Drive the built Bank Cleaner through the real Bank Core: the Cleanup tab's headings and
--- counts, pages of exact present stacks under standard label rows with no page heading,
+-- Drive the built Bank Cleaner through the real Bank Core: the Cleanup tab's folders and
+-- counts, redrawn in its mounted column rather than sent to Bank Core, pages of exact present stacks under standard label rows with no page heading,
 -- status labels, inventory generations, unchanged pages not sent again, the scan only while
 -- the categories are in view, and forgetting quest progress when the tab is chosen
 -- FAKE HOST: stand-in loader, components, and widgets, not the game client
@@ -26,12 +26,13 @@ assert(other:RegisterPage("eggs", { title = "Eggs", items = { EGG } }))
 assert(other:RegisterTab("main", { label = "Other", icon = "STAR", rows = { { page = "eggs" } } }))
 h:LoadCleaner()
 local app = h:App()
+local Sidebar = h.cleaner.env.package.loaded["bankcleaner/cleanup/sidebar"]
 assert(app:IsConnected())
 local session, layout = h:OpenBank()
 local service = session.extensionPages
 
 -- Count what Bank Cleaner sends Bank Core
-local updates, tabUpdates = {}, 0
+local updates, tabUpdates, redraws = {}, 0, 0
 local updatePage, updateTab = service.UpdatePage, service.UpdateTab
 service.UpdatePage = function(pages, owner, pageID, page)
     updates[#updates + 1] = pageID
@@ -46,13 +47,25 @@ local function takeUpdates()
     updates, tabUpdates = {}, 0
     return result
 end
+-- Count how often the mounted rows are redrawn, across mounts
+local setEntries = Sidebar.SetEntries
+Sidebar.SetEntries = function(sidebar, entries)
+    redraws = redraws + 1
+    return setEntries(sidebar, entries)
+end
+local function takeRedraws()
+    local result = redraws
+    redraws = 0
+    return result
+end
 
--- Describe the Cleanup tab's rows as Core draws them: headings and "label=detail"
+-- Describe the Cleanup tab's drawn rows: folders and "label=count"
 local function tabRows()
     local parts = {}
-    for _, row in ipairs(layout.list.rows) do
-        local status = layout.rowStatus[row.entry.id]
-        parts[#parts + 1] = status ~= nil and (row.entry.label .. "=" .. status) or ("#" .. row.entry.label)
+    for _, row in ipairs(app.sidebar.list.rows) do
+        local entry = row.entry
+        parts[#parts + 1] = Sidebar.FolderOf(entry.id) ~= nil and ("#" .. entry.label)
+            or (entry.label .. "=" .. row.count.content)
     end
     return table.concat(parts, " ")
 end
@@ -79,7 +92,7 @@ end
 
 -- Open a category's page from its row
 local function openRow(categoryID)
-    assert(layout.list:Click("__bankutils_ext:bankcleaner/" .. categoryID), categoryID)
+    if app.shownPage ~= categoryID then assert(app.sidebar.list:Click(categoryID), categoryID) end
     h:Tick(2)
 end
 
@@ -92,8 +105,8 @@ assert(app.tabActive and app.categories:IsScanning() and app.scanning)
 -- Eight distinct objects fit one batch; the scan publishes once and stops
 h:Tick(3)
 assert(not app.scanning and not app:IsBusy())
-assert(tabRows() == table.concat({ "#Review", "Quest Items=0", "#Utility storage", "Metal Bank=3",
-    "Clue Carrier=0", "Tool Leprechaun=0", "Focus Storage=2", "Spirits=0", "#Player-owned house",
+assert(tabRows() == table.concat({ "#Review (1)", "Quest Items=0", "#Utility storage (5)", "Metal Bank=3",
+    "Clue Carrier=0", "Tool Leprechaun=0", "Focus Storage=2", "Spirits=0", "#Player-owned house (7)",
     "Treasure Chest=0", "Armour Case=0", "Magic Wardrobe=0", "Cape Store=0", "Toy Box=0",
     "Fancy Dress Box=0", "Bookcase=0" }, " "), tabRows())
 
@@ -113,12 +126,14 @@ assert(shown() == "[Focus: Recommended] 55623:1 [Focus: Optional] 25835:1", show
 openRow("quest_items")
 assert(shown() == "[None of these items are in your bank.]", shown())
 takeUpdates()
+takeRedraws()
 
--- An inventory change that touches no category's members sends nothing to Bank Core
+-- An inventory change that touches no category's members sends nothing to Bank Core and
+-- leaves the tab's rows as they are
 host:Rebuild(function(specs) specs[7][2] = 9 end)
 layout:HandleInventoryUpdate()
 h:Tick(4)
-assert(not app.categories:IsScanning() and takeUpdates() == "0/0")
+assert(not app.categories:IsScanning() and takeUpdates() == "0/0" and takeRedraws() == 0)
 
 -- Withdrawing the first iron bar stack removes it from Metal Bank at once, with no scan;
 -- the second stack becomes copy 1 in the new generation
@@ -132,7 +147,7 @@ layout:HandleInventoryUpdate()
 h:Tick(4)
 assert(not app.scanning and app.categories.snapshot.generation == layout.itemsGeneration)
 assert(shown() == "[Metal Bank] 2349:1 2351:1", shown())
-assert(takeUpdates() == "1/1" and string.find(tabRows(), "Metal Bank=2", 1, true))
+assert(takeUpdates() == "1/0" and string.find(tabRows(), "Metal Bank=2", 1, true))
 -- The page keeps its key, so the scroll position stays
 assert(layout.pageState.view.key == "cleanup:metal_bank")
 
@@ -151,8 +166,8 @@ while not app.categories:IsScanning() and ticks < 4 do
 end
 assert(app.categories:IsScanning() and string.find(tabRows(), "Spirits=...", 1, true), tabRows())
 assert(string.find(tabRows(), "Metal Bank=...", 1, true))
--- The known members are already on the shown page, sent once with the busy tab
-assert(shown() == "[Metal Bank] 2349:1 2351:1" and takeUpdates() == "0/1", shown())
+-- The known members are already on the shown page; only the busy counts are redrawn
+assert(shown() == "[Metal Bank] 2349:1 2351:1" and takeUpdates() == "0/0", shown())
 h:Tick(4)
 assert(not app:IsBusy() and string.find(tabRows(), "Spirits=1", 1, true), tabRows())
 openRow("spirits")

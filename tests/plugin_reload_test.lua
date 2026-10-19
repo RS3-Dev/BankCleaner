@@ -37,7 +37,7 @@ assert(#state.pages == 13 and state.tabs[1] == "cleanup")
 local _, layout = h:OpenBank()
 h:Tick(4)
 assert(app.tabActive and not app:IsBusy() and app.published.metal_bank == "LMetal Bank\nS2349:1")
--- Bank Cleaner saves nothing
+-- Opening the bank and the Cleanup tab saves nothing
 assert(next(h.databases.bankcleaner or {}) == nil)
 
 -- The host reports Core unloaded and loaded again without reloading it: Bank Cleaner lets go

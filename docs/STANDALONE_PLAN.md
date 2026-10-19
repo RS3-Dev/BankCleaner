@@ -11,11 +11,11 @@ This records the plan agreed before implementation for making Bank Cleaner a sta
 
 - Plugin `bankcleaner`, Core owner `RegisterExtension("bankcleaner", "Bank Cleaner")`. PrettyUI `6398181` is required; `bankcore` is optional, because the host reports changes only for optional dependencies.
 - Every runtime module lives under `bankcleaner/` (`app`, `cleanup/categories`, `cleanup/pages`, `data/*`), so no require path collides with Bank Core's or another plugin's.
-- Events `bankcleaner_scan` and `bankcleaner_content`; the reload global `__bankcleaner_session`. Bank Cleaner publishes no API and saves nothing.
+- Events `bankcleaner_scan` and `bankcleaner_content`; the reload global `__bankcleaner_session`. Bank Cleaner publishes no API; it saves only the collapsed Cleanup folders, under `bankcleaner_folders`.
 
 ## Core encoding
 
-- One rows tab `cleanup` ("Cleanup", icon `ERASER`): heading rows for the three groups (Review, Utility storage, Player-owned house), then one page row per category with a `detail` of its count, or `...` while scanning. 16 rows, within Core's 64.
+- Superseded by the folders below: one rows tab `cleanup` ("Cleanup", icon `ERASER`): heading rows for the three groups (Review, Utility storage, Player-owned house), then one page row per category with a `detail` of its count, or `...` while scanning. 16 rows, within Core's 64.
 - 13 pages, within Core's 16, each `{ title = <Label>, key = "cleanup:<category>", layout = rows }`. The key is stable, so a rescan keeps the scroll position.
   - A category without sections: a standard `{ label = <Label> }` row, then one `{ slots = ... }` row.
   - Focus Storage and Spirits: per non-empty section, its label row (`Focus: Recommended`, `Stone Spirits (ore box)`, ...) followed by its slots.
@@ -41,6 +41,7 @@ This records the plan agreed before implementation for making Bank Cleaner a sta
 ## Behavior changes from the integrated plugin
 
 - The Cleanup sidebar's category search is dropped; 13 rows do not need it.
+- Later: the Cleanup tab became a mounted tab whose three groups are collapsible folders styled after Bank Tags' (`bankcleaner/cleanup/sidebar.lua`), with the collapsed set saved; counts redraw its rows in place rather than calling `UpdateTab`. `cleanup_sidebar_test` covers it.
 - Pages show present stacks only and update with each bank change, rather than keeping stale members as ghosts until a rescan.
 - Category labels are Core's standard label rows; there is no custom page heading.
 

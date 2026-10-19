@@ -1,10 +1,11 @@
 -- Compose Bank Cleaner: the cleanup categories, their pages and tab, the scan that classifies
 -- new objects, and the connection to Bank Core's public API. Through that API Bank Cleaner
--- registers one page per category, the Cleanup tab of rows that open them, and a listener;
--- it reads the bank only through Bank Core's state and item snapshots
+-- registers one page per category, the Cleanup tab whose folders of categories open them,
+-- and a listener; it reads the bank only through Bank Core's state and item snapshots
 
 local Categories = require("bankcleaner/cleanup/categories")
 local Pages = require("bankcleaner/cleanup/pages")
+local Sidebar = require("bankcleaner/cleanup/sidebar")
 
 local App = {}
 App.__index = App
@@ -17,6 +18,9 @@ local CONTENT_EVENT = "bankcleaner_content"
 local NOT_CONNECTED = "Bank Cleaner needs Bank Core. Enable Bank Core to see cleanup pages in your bank."
 local CONNECTED = "Bank Cleaner is in your bank: open the bank and choose the Cleanup tab in the sidebar."
 local REPLACED = "A newer copy of Bank Cleaner took over; this copy is idle."
+local SAVE_FAILED = "Bank Cleaner could not save which Cleanup folders are collapsed; they stay as shown until it reloads."
+-- Where the collapsed folders are saved: { collapsed = { group, ... } }
+local FOLDERS_KEY = "bankcleaner_folders"
 -- Readiness reasons that mean the bank is not open at all
 local CLOSED = { stale_api = true, not_ready = true, bank_closed = true }
 
@@ -34,9 +38,22 @@ local function findBank()
     return nil
 end
 
+-- Read which folders the player collapsed, keeping only groups that still exist
+local function loadCollapsed()
+    local collapsed = {}
+    local ok, saved = pcall(function() return PersistentDB:GetStructuredData(FOLDERS_KEY) end)
+    if not ok or type(saved) ~= "table" or type(saved.collapsed) ~= "table" then return collapsed end
+    for _, group in ipairs(Categories.GROUPS) do
+        for _, name in ipairs(saved.collapsed) do
+            if name == group then collapsed[group] = true end
+        end
+    end
+    return collapsed
+end
+
 -- Create the categories, connected to nothing and subscribed to nothing
 function App.new()
-    return setmetatable({
+    local self = setmetatable({
         categories = Categories.new(),
         -- Bank Core's API table and this plugin's owner handle while connected
         bank = nil,
@@ -44,9 +61,15 @@ function App.new()
         -- Whether the bank is open with the Cleanup tab chosen, and which page is shown
         tabActive = false,
         shownPage = nil,
-        -- What Bank Core was last given: each page's layout and the tab's rows, as signatures
+        -- What Bank Core was last given: each page's layout, as signatures
         published = {},
-        tabSignature = nil,
+        -- The tab's folders, their counts' signature, and the folders the player collapsed
+        folders = nil,
+        foldersSignature = nil,
+        collapsed = loadCollapsed(),
+        -- The tab's mounted rows while shown, and why collapsing could not be saved
+        sidebar = nil,
+        saveFailure = nil,
         scanning = false,
         -- Why Bank Core refused the tab or a page, shown on the plugin panel
         failure = nil,
@@ -55,6 +78,23 @@ function App.new()
         started = false,
         shutDown = false,
     }, App)
+    -- One set of callbacks for the app's life, so the mounted rows are never replaced
+    self.mount = {
+        mount = function(ctx)
+            self.sidebar = Sidebar.Mount(ctx, function(group) self:ToggleFolder(group) end,
+                function(categoryID) self:ChooseCategory(ctx, categoryID) end)
+            self:RefreshSidebar()
+        end,
+        resize = function()
+            if self.sidebar ~= nil then self.sidebar:Resize() end
+        end,
+        unmount = function()
+            local sidebar = self.sidebar
+            self.sidebar = nil
+            if sidebar ~= nil then sidebar:Destroy() end
+        end,
+    }
+    return self
 end
 
 -- Subscribe to this plugin's panel and connect to Bank Core if it runs
@@ -75,10 +115,10 @@ function App:IsBusy()
     return not self.categories:HasSnapshot() or self.categories:IsScanning()
 end
 
--- Give Bank Core every page whose layout changed and the tab when a count changed. With
--- register set, every page and the tab are registered rather than updated. Empty pages say
--- the bank is being scanned only until the first scan finishes, so a new object does not
--- change every empty page
+-- Give Bank Core every page whose layout changed and redraw the tab's rows when a count
+-- changed. With register set, every page and the tab are registered rather than updated.
+-- Empty pages say the bank is being scanned only until the first scan finishes, so a new
+-- object does not change every empty page
 function App:Publish(register)
     local handle = self.handle
     if handle == nil then return true end
@@ -101,20 +141,18 @@ function App:Publish(register)
             self.published[definition.id] = signature
         end
     end
-    local tab = Pages.Tab(members, busy)
-    local signature = Pages.TabSignature(tab)
-    if register or self.tabSignature ~= signature then
-        local ok, reason
-        if register then
-            ok, reason = handle:RegisterTab(Pages.TAB_ID, tab)
-        else
-            ok, reason = handle:UpdateTab(Pages.TAB_ID, tab)
-        end
+    local folders = Pages.Folders(members, busy)
+    local signature = Pages.FoldersSignature(folders)
+    local changed = self.foldersSignature ~= signature
+    self.folders, self.foldersSignature = folders, signature
+    if register then
+        local ok, reason = handle:RegisterTab(Pages.TAB_ID, Pages.Tab(self.mount))
         if not ok then
             self:Fail("Cleanup tab", reason)
             return false
         end
-        self.tabSignature = signature
+    elseif changed then
+        self:RefreshSidebar()
     end
     return true
 end
@@ -170,7 +208,7 @@ function App:Disconnect()
     self:StopScan()
     local handle = self.handle
     self.handle, self.bank = nil, nil
-    self.tabActive, self.shownPage, self.published, self.tabSignature = false, nil, {}, nil
+    self.tabActive, self.shownPage, self.published, self.foldersSignature = false, nil, {}, nil
     self.categories:Clear()
     if handle ~= nil then pcall(function() handle:Dispose() end) end
     self:UpdatePanelNotice()
@@ -204,10 +242,40 @@ end
 
 -- Remember which of the categories' pages is shown, reading the bank when one opens
 function App:OnPage(pageID)
-    local watching = self:IsWatching()
+    local watching, shown = self:IsWatching(), self.shownPage
     self.shownPage = pageID
     if not watching and self:IsWatching() then self:ReadBank() end
+    if shown ~= pageID then self:RefreshSidebar() end
     self:Follow()
+end
+
+-- Redraw the mounted tab's rows from the folders, the collapsed set, and the shown page
+function App:RefreshSidebar()
+    if self.sidebar == nil or self.folders == nil then return end
+    self.sidebar:SetEntries(Sidebar.Entries(self.folders, self.collapsed, self.shownPage))
+end
+
+-- Open a category's page from its row, or leave it when it is already shown. A refused page
+-- shows the bank's guidance; the rows are redrawn so the click leaves no false selection
+function App:ChooseCategory(ctx, categoryID)
+    if categoryID == self.shownPage then ctx:LeavePage() else ctx:OpenPage(categoryID) end
+    self:RefreshSidebar()
+end
+
+-- Collapse or expand a folder and save the collapsed set. A refused save keeps the folder as
+-- the player left it and says so on the plugin panel
+function App:ToggleFolder(group)
+    self.collapsed[group] = not self.collapsed[group] or nil
+    local collapsed = {}
+    for _, name in ipairs(Categories.GROUPS) do
+        if self.collapsed[name] then collapsed[#collapsed + 1] = name end
+    end
+    local ok, saved = pcall(function()
+        return PersistentDB:SetStructuredData(FOLDERS_KEY, { collapsed = collapsed })
+    end)
+    self.saveFailure = not (ok and saved ~= false) and SAVE_FAILED or nil
+    self:UpdatePanelNotice()
+    self:RefreshSidebar()
 end
 
 -- Read a new bank generation while the categories are in view; otherwise it is read when
@@ -264,8 +332,8 @@ end
 -- Say whether Bank Cleaner is in the bank, or why not
 function App:PanelNotice()
     if self.failure ~= nil then return self.failure end
-    if self:IsConnected() then return CONNECTED end
-    return self.retired and REPLACED or NOT_CONNECTED
+    local notice = self:IsConnected() and CONNECTED or self.retired and REPLACED or NOT_CONNECTED
+    return self.saveFailure ~= nil and notice .. " " .. self.saveFailure or notice
 end
 
 -- Show the current notice on an open plugin panel

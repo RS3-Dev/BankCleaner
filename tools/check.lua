@@ -14,7 +14,7 @@ local compiler = interpreter:gsub("lua(%d*)%.exe$", "luac%1.exe"):gsub("lua(%d*)
 -- Globals the game host and Lua itself provide, and the dependency globals it injects
 local ALLOWED = {}
 for name in ([[
-ui id Event prettyui config log bankcore PluginShutdown PluginDependencyUpdate
+ui id Event prettyui config log bankcore PluginShutdown PluginDependencyUpdate PersistentDB
 pairs ipairs type tostring tonumber math string table pcall error select next setmetatable
 getmetatable rawget rawset require assert collectgarbage package _G
 ]]):gmatch("%S+") do ALLOWED[name] = true end

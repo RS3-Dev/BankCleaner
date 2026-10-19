@@ -1,6 +1,6 @@
--- Describe the Cleanup tab and one Bank Core page per category from the categories' members.
--- Every slot names an exact present stack, { item, copy }, of the snapshot the members came
--- from; categories are labelled with Bank Core's standard label rows
+-- Describe the Cleanup tab's folders and one Bank Core page per category from the categories'
+-- members. Every slot names an exact present stack, { item, copy }, of the snapshot the
+-- members came from; categories are labelled with Bank Core's standard label rows
 
 local Categories = require("bankcleaner/cleanup/categories")
 
@@ -9,9 +9,9 @@ local Pages = {}
 Pages.TAB_ID = "cleanup"
 Pages.EMPTY = "None of these items are in your bank."
 Pages.SCANNING = "Scanning bank..."
--- The row detail Bank Core shows beside a category while it may still change
+-- The count shown beside a category while it may still change
 Pages.BUSY = "..."
--- Bank Core shows at most six characters of row detail
+-- The count column fits six characters
 local DETAIL_LIMIT = 999999
 
 -- Name the page key for a category; it never changes, so a rescan keeps the scroll position
@@ -66,29 +66,36 @@ function Pages.Signature(layout)
     return table.concat(parts, "\n")
 end
 
--- Describe the Cleanup tab: each group's heading, then its categories with their counts, or
--- a busy mark while objects are still being classified
-function Pages.Tab(members, scanning)
-    local rows = {}
+-- Describe the Cleanup tab's folders: each group with its categories and their counts, or a
+-- busy mark while objects are still being classified
+function Pages.Folders(members, scanning)
+    local folders = {}
     for _, group in ipairs(Categories.GROUPS) do
-        rows[#rows + 1] = { heading = group }
+        local categories = {}
         for _, definition in ipairs(Categories.DEFINITIONS) do
             if definition.group == group then
                 local count = math.min(#members[definition.id], DETAIL_LIMIT)
-                rows[#rows + 1] = { page = definition.id, label = definition.label,
+                categories[#categories + 1] = { id = definition.id, label = definition.label,
                     detail = scanning and Pages.BUSY or tostring(count) }
             end
         end
+        folders[#folders + 1] = { label = group, categories = categories }
     end
-    return { label = "Cleanup", icon = "ERASER", tooltip = "Items that belong in other storage",
-        rows = rows }
+    return folders
 end
 
--- Summarise the tab's rows as text, so unchanged counts are not sent to Bank Core again
-function Pages.TabSignature(tab)
+-- Summarise the folders' counts as text, so unchanged counts do not redraw the rows
+function Pages.FoldersSignature(folders)
     local parts = {}
-    for _, row in ipairs(tab.rows) do parts[#parts + 1] = (row.heading or row.page) .. "=" .. tostring(row.detail) end
-    return table.concat(parts, "\n")
+    for _, folder in ipairs(folders) do
+        for _, category in ipairs(folder.categories) do parts[#parts + 1] = category.id .. "=" .. category.detail end
+    end
+    return table.concat(parts, " ")
+end
+
+-- Describe the Cleanup tab, whose column the mount callbacks draw
+function Pages.Tab(mount)
+    return { label = "Cleanup", icon = "ERASER", tooltip = "Items that belong in other storage", mount = mount }
 end
 
 return Pages
