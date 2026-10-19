@@ -1,7 +1,4 @@
--- Compose Bank Cleaner: the cleanup categories, their pages and tab, the scan that classifies
--- new objects, and the connection to Bank Core's public API. Through that API Bank Cleaner
--- registers one page per category, the Cleanup tab whose folders of categories open them,
--- and a listener; it reads the bank only through Bank Core's state and item snapshots
+-- Show Bank Cleaner's pages and Cleanup tab through Bank Core's API
 
 local Categories = require("bankcleaner/cleanup/categories")
 local Pages = require("bankcleaner/cleanup/pages")
@@ -24,9 +21,9 @@ local FOLDERS_KEY = "bankcleaner_folders"
 -- Readiness reasons that mean the bank is not open at all
 local CLOSED = { stale_api = true, not_ready = true, bank_closed = true }
 
--- Find a running Bank Core API: the injected dependency first, the published copy second
+-- Find Bank Core's API, injected first, then published
 local function findBank()
-    -- Either may be missing, so both are checked by position rather than with ipairs
+    -- Either may be nil, which would stop ipairs early
     local candidates = { bankcore, rawget(_G, CORE_API_KEY) }
     for index = 1, 2 do
         local candidate = candidates[index]
@@ -51,34 +48,34 @@ local function loadCollapsed()
     return collapsed
 end
 
--- Create the categories, connected to nothing and subscribed to nothing
+-- Create the app before it connects or subscribes
 function App.new()
     local self = setmetatable({
         categories = Categories.new(),
-        -- Bank Core's API table and this plugin's owner handle while connected
+        -- Bank Core's API and this plugin's owner handle
         bank = nil,
         handle = nil,
-        -- Whether the bank is open with the Cleanup tab chosen, and which page is shown
+        -- Whether the Cleanup tab is in view, and its shown page
         tabActive = false,
         shownPage = nil,
-        -- What Bank Core was last given: each page's layout, as signatures
+        -- Each page's last sent layout signature
         published = {},
-        -- The tab's folders, their counts' signature, and the folders the player collapsed
+        -- Tab folders, their count signature, and collapsed folders
         folders = nil,
         foldersSignature = nil,
         collapsed = loadCollapsed(),
-        -- The tab's mounted rows while shown, and why collapsing could not be saved
+        -- Mounted tab rows, and the last folder save error
         sidebar = nil,
         saveFailure = nil,
         scanning = false,
-        -- Why Bank Core refused the tab or a page, shown on the plugin panel
+        -- Bank Core's refusal reason for the plugin panel
         failure = nil,
         panel = nil,
         retired = false,
         started = false,
         shutDown = false,
     }, App)
-    -- One set of callbacks for the app's life, so the mounted rows are never replaced
+    -- Kept for the app's life so mounted rows are never replaced
     self.mount = {
         mount = function(ctx)
             self.sidebar = Sidebar.Mount(ctx, function(group) self:ToggleFolder(group) end,
@@ -105,20 +102,18 @@ function App:Start()
     self:Connect()
 end
 
--- Report whether this plugin's owner is registered with a running Bank Core
+-- Report whether this plugin is registered with Bank Core
 function App:IsConnected()
     return self.handle ~= nil and self.handle:GetState().live == true
 end
 
--- Report whether counts may still change: no bank read yet, or objects to classify
+-- Report whether counts may still change
 function App:IsBusy()
     return not self.categories:HasSnapshot() or self.categories:IsScanning()
 end
 
--- Give Bank Core every page whose layout changed and redraw the tab's rows when a count
--- changed. With register set, every page and the tab are registered rather than updated.
--- Empty pages say the bank is being scanned only until the first scan finishes, so a new
--- object does not change every empty page
+-- Send changed pages to Bank Core, or register everything
+-- Empty pages say scanning only until the first scan ends
 function App:Publish(register)
     local handle = self.handle
     if handle == nil then return true end
@@ -157,17 +152,17 @@ function App:Publish(register)
     return true
 end
 
--- Record why Bank Core refused a registration and show it on the plugin panel
+-- Record a refused registration and show it on the panel
 function App:Fail(what, reason)
     self.failure = "Bank Core refused the " .. what .. " (" .. tostring(reason) .. ")."
     self:UpdatePanelNotice()
 end
 
--- Register the pages, the Cleanup tab, and the listener with the running Bank Core
+-- Register the pages, Cleanup tab, and listener
 function App:Connect()
     if self.shutDown then return false, "stopped" end
     if self:IsConnected() then return true end
-    -- A newer load of Bank Cleaner took the owner ID; taking it back would undo that
+    -- A newer Bank Cleaner load owns the ID now, so leave it
     if self.handle ~= nil and self.bank.GetState().running then
         self.handle, self.bank, self.retired = nil, nil, true
         self:Disconnect()
@@ -214,13 +209,12 @@ function App:Disconnect()
     self:UpdatePanelNotice()
 end
 
--- Report whether the bank is open and the Cleanup tab or one of its pages is in view
+-- Report whether the Cleanup tab or one of its pages is shown
 function App:IsWatching()
     return self.tabActive or self.shownPage ~= nil
 end
 
--- Follow the bank: a closed bank drops its snapshot, and choosing the Cleanup tab with the
--- bank open forgets every classification, so quest progress is read again
+-- Track the bank, rereading quest progress when Cleanup opens
 function App:OnState(state)
     local open = state.running and not CLOSED[state.reason]
     local tabActive = open and state.activeTab == Pages.TAB_ID
@@ -240,7 +234,7 @@ function App:OnState(state)
     self:Follow()
 end
 
--- Remember which of the categories' pages is shown, reading the bank when one opens
+-- Track the shown category page, reading the bank on open
 function App:OnPage(pageID)
     local watching, shown = self:IsWatching(), self.shownPage
     self.shownPage = pageID
@@ -249,21 +243,20 @@ function App:OnPage(pageID)
     self:Follow()
 end
 
--- Redraw the mounted tab's rows from the folders, the collapsed set, and the shown page
+-- Redraw the mounted tab's rows
 function App:RefreshSidebar()
     if self.sidebar == nil or self.folders == nil then return end
     self.sidebar:SetEntries(Sidebar.Entries(self.folders, self.collapsed, self.shownPage))
 end
 
--- Open a category's page from its row, or leave it when it is already shown. A refused page
--- shows the bank's guidance; the rows are redrawn so the click leaves no false selection
+-- Open or leave a category's page from its row
+-- Rows are redrawn so a refused page leaves no selection
 function App:ChooseCategory(ctx, categoryID)
     if categoryID == self.shownPage then ctx:LeavePage() else ctx:OpenPage(categoryID) end
     self:RefreshSidebar()
 end
 
--- Collapse or expand a folder and save the collapsed set. A refused save keeps the folder as
--- the player left it and says so on the plugin panel
+-- Toggle a folder and save the collapsed folders
 function App:ToggleFolder(group)
     self.collapsed[group] = not self.collapsed[group] or nil
     local collapsed = {}
@@ -278,14 +271,12 @@ function App:ToggleFolder(group)
     self:RefreshSidebar()
 end
 
--- Read a new bank generation while the categories are in view; otherwise it is read when
--- they come into view
+-- Read a new bank generation if the categories are in view
 function App:OnBankItems()
     if self:IsWatching() then self:ReadBank() end
 end
 
--- Read the bank's items and show them. While Bank Core is still building, the last snapshot
--- stays; a closed bank drops it
+-- Read and show the bank, keeping the snapshot while Core builds
 function App:ReadBank()
     if self.handle == nil then return end
     local snapshot, reason = self.handle:GetBankItems()
@@ -298,7 +289,7 @@ function App:ReadBank()
     self:Follow()
 end
 
--- Run the scan while objects wait to be classified and the categories are in view
+-- Scan while objects wait and the categories are in view
 function App:Follow()
     if self.handle ~= nil and self:IsWatching() and self.categories:IsScanning() then
         self:StartScan()
@@ -307,7 +298,7 @@ function App:Follow()
     end
 end
 
--- Classify a batch of new objects each logic tick, publishing once the batch run finishes
+-- Classify a batch each logic tick, then publish
 function App:StartScan()
     if self.scanning then return end
     self.scanning = true
@@ -336,12 +327,12 @@ function App:PanelNotice()
     return self.saveFailure ~= nil and notice .. " " .. self.saveFailure or notice
 end
 
--- Show the current notice on an open plugin panel
+-- Refresh the notice on an open plugin panel
 function App:UpdatePanelNotice()
     if self.panel ~= nil then self.panel.content = self:PanelNotice() end
 end
 
--- Show the notice on this plugin's own panel, connecting first if Bank Core started
+-- Show the panel notice, connecting first if Bank Core started
 function App:CreatePanel(parent)
     if self.shutDown then return end
     self:Connect()
@@ -359,7 +350,7 @@ function App:DestroyPanel()
     if panel ~= nil then pcall(function() panel:Destroy() end) end
 end
 
--- Stop Bank Cleaner: release its panel, scan, and Bank Core registration
+-- Release the panel, scan, and Bank Core registration
 function App:Shutdown()
     if self.shutDown then return end
     self.shutDown = true

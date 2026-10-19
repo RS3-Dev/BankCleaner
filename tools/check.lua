@@ -1,9 +1,7 @@
--- Build Bank Cleaner, run every test, and check that every built runtime file compiles and
--- reads or writes no unexpected global, that every runtime source ships, and that nothing
--- from reference/ or tests/ does
--- Usage, from the repository root: lua54 tools/check.lua
--- Tests that load Bank Core read it from BANKCORE_ROOT; see tests/README.md
--- Each test runs in its own process because the tests install different host stand-ins
+-- Build, run every test, and check the built runtime files
+-- Usage from the repository root: lua54 tools/check.lua
+-- Tests that load Bank Core read it from BANKCORE_ROOT
+-- Each test runs in its own process since host stand-ins differ
 
 package.path = "./?.lua;" .. package.path
 
@@ -11,7 +9,7 @@ local interpreter = arg[-1] or "lua54"
 -- luac sits beside the interpreter in the Lua binary distribution
 local compiler = interpreter:gsub("lua(%d*)%.exe$", "luac%1.exe"):gsub("lua(%d*)$", "luac%1")
 
--- Globals the game host and Lua itself provide, and the dependency globals it injects
+-- Globals the host, Lua, and injected dependencies provide
 local ALLOWED = {}
 for name in ([[
 ui id Event prettyui config log bankcore PluginShutdown PluginDependencyUpdate PersistentDB
@@ -37,7 +35,7 @@ end
 
 local failures = 0
 
--- The built folder is what the client loads, so it is what gets compiled
+-- Compile the built folder, since that is what the client loads
 local Build = require("tools/build")
 local built, build = pcall(Build.Run, { out = "dist/check" })
 if not built then
@@ -56,7 +54,7 @@ for _, file in ipairs(build.files) do
 end
 print(("built %d files into %s"):format(#build.files, build.folder))
 
--- Every runtime source belongs to the plugin; one the entry never loads would never ship
+-- A runtime source the entry never loads would never ship
 local orphans = 0
 for _, path in ipairs(trackedFiles('"plugins/*.lua"', '"bankcleaner/*.lua"')) do
     if not shipped[path] then
@@ -65,7 +63,7 @@ for _, path in ipairs(trackedFiles('"plugins/*.lua"', '"bankcleaner/*.lua"')) do
     end
 end
 
--- Say which Bank Core the tests load, since they run against whatever checkout that is
+-- Show which Bank Core checkout the tests run against
 local coreRoot = os.getenv("BANKCORE_ROOT")
 if coreRoot == nil then
     print("Bank Core for tests: BANKCORE_ROOT is not set, so tests that load Bank Core fail")

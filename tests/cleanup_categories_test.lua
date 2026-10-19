@@ -1,8 +1,6 @@
 package.path = "./?.lua;" .. package.path
 
--- Classify objects with stand-in catalogs and quests: every category's membership, present
--- stacks only, sections in their definition's order, the quest rule failing closed, the batch
--- limit, the object cache across snapshots, and forgetting it
+-- Classify objects using stand-in catalogs and quests
 
 local quests = {
     [1] = { hasFinishedQuest = true },
@@ -40,7 +38,7 @@ local CATALOGS = {
     woodSpiritObjects = { [101] = true },
 }
 
--- Build a snapshot as GetBankItems gives it from { objectID, quantity } pairs in bank order
+-- Build a snapshot from { objectID, quantity } pairs
 local function snapshot(generation, specs)
     local items, copies = {}, {}
     for index, spec in ipairs(specs) do
@@ -51,7 +49,7 @@ local function snapshot(generation, specs)
     return { generation = generation, items = items }
 end
 
--- Describe a category's members as "object:copy" in order, with each member's section
+-- Describe members as "object:copy", with sections
 local function listed(members, categoryID)
     local parts = {}
     for index, member in ipairs(members[categoryID]) do
@@ -60,7 +58,7 @@ local function listed(members, categoryID)
     return table.concat(parts, " ")
 end
 
--- Every definition keeps its label, group, and order; ids are plain page IDs
+-- Definitions keep their label, group, and order
 local labels = {}
 for index, definition in ipairs(Categories.DEFINITIONS) do
     labels[index] = definition.id .. "=" .. definition.label .. "@" .. definition.group
@@ -81,7 +79,7 @@ assert(not cleanup:IsScanning() and not cleanup:HasSnapshot() and not cleanup:Ha
 assert(cleanup:Step() == true)
 assert(listed(cleanup:Members(), "quest_items") == "")
 
--- 100's second stack is a placeholder; 103 sits before 102, so bank order decides members
+-- 100's second stack is a placeholder; bank order decides members
 cleanup:Observe(snapshot(1, { { 100, 1 }, { 101, 1 }, { 103, 4 }, { 102, 1 }, { 100, 0 } }))
 assert(cleanup:IsScanning() and not cleanup:HasScanned())
 -- Until classified, objects are in no category
@@ -101,7 +99,7 @@ assert(listed(members, "tool_leprechaun") == "102:1")
 assert(listed(members, "toy_box") == "103:1")
 assert(listed(members, "fancy_dress_box") == "100:1")
 assert(listed(members, "bookcase") == "101:1")
--- Sections are recorded per member; the page lays them out in the definition's order
+-- Members record sections; pages order them by definition
 assert(listed(members, "focus_storage") == "103:1/optional 102:1/recommended", listed(members, "focus_storage"))
 assert(listed(members, "spirits") == "100:1/stone 101:1/wood")
 local focus = Categories.Definition("focus_storage")
@@ -109,8 +107,7 @@ assert(focus.sections[1].id == "recommended" and focus.sections[2].label == "Foc
 assert(Categories.Definition("spirits").sections[1].label == "Stone Spirits (ore box)")
 assert(Categories.Definition("metal_bank").sections == nil and Categories.Definition("missing") == nil)
 
--- A new generation of known objects needs no scan: a withdrawn stack leaves at once, and a
--- second stack of a known object joins with its own copy
+-- Known objects need no scan when the generation changes
 local reads = questReads
 cleanup:Observe(snapshot(2, { { 100, 1 }, { 103, 4 }, { 102, 0 }, { 103, 2 } }))
 assert(not cleanup:IsScanning() and questReads == reads)
@@ -119,8 +116,8 @@ assert(listed(members, "metal_bank") == "")
 assert(listed(members, "quest_items") == "100:1 103:1 103:2")
 assert(listed(members, "toy_box") == "103:1 103:2")
 
--- The quest rule fails closed: no quests, an unreadable quest, or no quest config
--- A later scan only adds new objects; the first scan stays finished
+-- The quest rule fails closed without quest data
+-- A later scan only adds new objects
 cleanup:Observe(snapshot(3, { { 105, 1 }, { 106, 1 } }))
 assert(cleanup:IsScanning() and cleanup:HasScanned())
 assert(cleanup:Step() == true)
@@ -133,8 +130,8 @@ closed:Step()
 assert(listed(closed:Members(), "quest_items") == "" and listed(closed:Members(), "magic_wardrobe") == "100:1")
 config = saved
 
--- Only new objects are evaluated, at most a batch per step, and a scan that is replaced by a
--- newer snapshot keeps what it already classified
+-- Only new objects are evaluated, at most a batch per step
+-- A replaced scan keeps what it already classified
 local counted = {}
 local calls = 0
 for objectID = 1000, 1059 do counted[objectID] = true end
@@ -154,7 +151,7 @@ assert(listed(batched:Members(), "metal_bank") == "1001:1")
 batched:Observe(snapshot(3, specs))
 assert(not batched:IsScanning() and calls == 60)
 
--- Forgetting reads every object and quest again, as switching to the tab does
+-- Forgetting reads every object and quest again
 quests[2].hasFinishedQuest = true
 cleanup:Observe(snapshot(4, { { 101, 1 }, { 100, 1 } }))
 assert(not cleanup:IsScanning() and listed(cleanup:Members(), "quest_items") == "100:1")

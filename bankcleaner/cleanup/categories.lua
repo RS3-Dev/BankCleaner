@@ -1,7 +1,4 @@
--- Classify bank objects into cleanup categories from generated catalogs and confirmed quest
--- progress, and list the present stacks of each category from one bank snapshot. Every rule
--- reads only the object ID, so each object is classified once and cached; only objects not
--- seen before are evaluated, a bounded batch at a time
+-- Sort bank objects into cleanup categories, a batch at a time
 
 local Categories = {}
 Categories.__index = Categories
@@ -53,9 +50,7 @@ local function questItems(objectID, _, context)
             finished = read(quest, "hasFinishedQuest") == true
             context.questStatus[questID] = finished
         end
-        -- Completion is deliberately fail-closed. Empty Archaeology grouping
-        -- records, missing runtime state, and unfinished quests all remain out
-        -- of the generated cleanup view
+        -- Fail closed: missing records or state and unfinished quests stay out
         if finished ~= true then
             return false, "quest_incomplete_or_unknown"
         end
@@ -63,7 +58,7 @@ local function questItems(objectID, _, context)
     return true, "all_quests_complete"
 end
 
--- Create a membership rule backed by a generated storage-item catalog
+-- Create a rule backed by a generated item catalog
 local function catalogItems(catalogField, reason)
     local absentReason = "not_" .. reason
     return function(objectID, _, context)
@@ -188,7 +183,7 @@ local DEFINITIONS = {
 -- The categories' group headings, in the order the tab shows them
 Categories.GROUPS = { "Review", "Utility storage", "Player-owned house" }
 Categories.DEFINITIONS = DEFINITIONS
--- Objects classified per logic tick, as the integrated plugin's scan did
+-- Objects classified per logic tick
 Categories.BATCH = 25
 
 local CATALOGS = {
@@ -209,20 +204,19 @@ local CATALOGS = {
     woodSpiritObjects = DefaultWoodSpiritObjects,
 }
 
--- Load the catalogs, any replaced by options for tests, with nothing classified
+-- Load the catalogs, with optional test overrides
 function Categories.new(options)
     options = options or {}
     local context = { questStatus = {} }
     for name, catalog in pairs(CATALOGS) do context[name] = options[name] or catalog end
     return setmetatable({
         context = context,
-        -- Each classified object's categories: category ID to its section, or true
+        -- Category ID to section, or true, per classified object
         classes = {},
-        -- The bank snapshot the members come from, and the objects in it still unclassified
+        -- Current bank snapshot and its unclassified objects
         snapshot = nil,
         pending = nil,
-        -- Whether every object has been classified once since the snapshot was dropped or
-        -- the classifications forgotten
+        -- Whether a full scan finished since the last reset
         scanned = false,
     }, Categories)
 end
@@ -253,15 +247,15 @@ local function unclassified(self)
     return #pending > 0 and { objects = pending, index = 1 } or nil
 end
 
--- Use a new bank snapshot, { generation, items } as Bank Core's GetBankItems gives it.
--- Objects already classified count at once; the rest wait for Step
+-- Use a new { generation, items } bank snapshot
+-- Known objects count at once; the rest wait for Step
 function Categories:Observe(snapshot)
     self.snapshot = snapshot
     self.pending = unclassified(self)
     if self.pending == nil then self.scanned = true end
 end
 
--- Drop the snapshot and any scan, as when the bank closes; classifications are kept
+-- Drop the snapshot and scan, keeping classifications
 function Categories:Clear()
     self.snapshot, self.pending, self.scanned = nil, nil, false
 end
@@ -284,8 +278,7 @@ function Categories:HasSnapshot()
     return self.snapshot ~= nil
 end
 
--- Report whether a first scan has finished since the snapshot was dropped or the
--- classifications forgotten; later scans only add new objects
+-- Report whether a full scan finished since the last reset
 function Categories:HasScanned()
     return self.scanned
 end
@@ -312,9 +305,8 @@ function Categories:Step(limit)
     return true
 end
 
--- List each category's members from the snapshot: present stacks of classified objects, as
--- { objectID, copy, section } in bank order, under the category ID. Unclassified objects
--- and placeholders are left out
+-- List each category's present classified stacks in bank order
+-- Members are { objectID, copy, section }, keyed by category ID
 function Categories:Members()
     local members = {}
     for _, definition in ipairs(DEFINITIONS) do members[definition.id] = {} end

@@ -1,6 +1,5 @@
--- Start Bank Cleaner: pages of bank items that belong in other storage, shown in the bank
--- through Bank Core's public API. Bank Core is an optional dependency only because the host
--- reports changes for optional dependencies; without it, the plugin panel says it is needed
+-- Start Bank Cleaner on top of Bank Core
+-- Core is optional only so the host reports its load and unload
 
 local SESSION_KEY = "__bankcleaner_session"
 
@@ -11,8 +10,8 @@ if rawget(_G, SESSION_KEY) == previous then _G[SESSION_KEY] = nil end
 previous = nil
 pcall(function() collectgarbage("collect") end)
 
--- The host retains modules across reloads; evict this plugin's cache to keep callbacks current.
--- tools/build.lua writes the list into the built main.lua, so run the built folder, not this file
+-- The host keeps modules across reloads, so evict this plugin's cache
+-- tools/build.lua fills in this list, so run the built folder
 if package ~= nil and package.loaded ~= nil then
     for _, moduleName in ipairs({
         -- build: every module this plugin loads
@@ -32,7 +31,7 @@ function PluginDependencyUpdate(event)
     if event.enabled then app:Connect() else app:Disconnect() end
 end
 
--- Stop the session and release its reload reference when the host unloads Bank Cleaner
+-- Stop the session and drop its reload reference on unload
 function PluginShutdown()
     app:Shutdown()
     if rawget(_G, SESSION_KEY) == app then _G[SESSION_KEY] = nil end

@@ -1,7 +1,4 @@
--- Draw the Cleanup tab's column in Bank Core's mounted tab: a folder row per group that
--- collapses or expands it, and beneath an open folder a row per category with its count.
--- Styled after Bank Tags' folders; the app decides what choosing a category does and keeps
--- which folders are collapsed
+-- Draw the Cleanup tab's folder and category rows
 
 local Sidebar = {}
 Sidebar.__index = Sidebar
@@ -37,9 +34,8 @@ function Sidebar.FolderOf(entryID)
     return string.sub(entryID, #FOLDER_PREFIX + 1)
 end
 
--- Describe the rows: each folder with its number of categories, then, while it is open, its
--- categories with their counts. The shown category is selected; a collapsed folder holding
--- it carries the outline instead
+-- List each folder and, while open, its categories with counts
+-- A collapsed folder holding the shown category gets the outline
 function Sidebar.Entries(folders, collapsed, shownPage)
     local entries = {}
     for _, folder in ipairs(folders) do
@@ -65,8 +61,7 @@ function Sidebar.Entries(folders, collapsed, shownPage)
     return entries
 end
 
--- Create the row list in a mounted tab's parent. onFolder(group) and onCategory(categoryID)
--- answer clicks
+-- Create the row list in a mounted tab's parent
 function Sidebar.Mount(ctx, onFolder, onCategory)
     local self = setmetatable({ ctx = ctx, entries = {}, entriesByID = {} }, Sidebar)
     local width, height = Sidebar.ListSize(ctx)
@@ -89,7 +84,7 @@ function Sidebar.ListSize(ctx)
     return math.max(1, bounds.width - CONTENT_X * 2), math.max(1, bounds.height - LIST_TOP - LIST_BOTTOM)
 end
 
--- Fit the list to the column's new bounds, keeping its rows
+-- Fit the list to the column's new bounds
 function Sidebar:Resize()
     self.list:SetSize(Sidebar.ListSize(self.ctx))
 end
@@ -124,7 +119,7 @@ local function addSelectedFrame(root)
     frame:MoveToFront()
 end
 
--- Turn a sprite through the host's sprite rotation variants, as Bank Tags does
+-- Rotate a sprite using the host's rotation variants
 local function rotate(sprite, radians, degrees)
     if sprite.SetRotation ~= nil then pcall(function() sprite:SetRotation(radians) end) end
     pcall(function() sprite.rotation = radians end)
@@ -133,13 +128,13 @@ local function rotate(sprite, radians, degrees)
     pcall(function() sprite.angleDegrees = degrees end)
 end
 
--- Add folder chevrons and accents, category indents and counts, and selection frames
+-- Add chevrons, accents, indents, counts, and selection frames
 function Sidebar:DecorateRows()
     local rows = self.list.rows or {}
     for index, row in ipairs(rows) do
         -- PrettyUI may copy only known entry fields into its rows
         local entry = self.entriesByID[row.entry.id] or row.entry
-        -- The accent bridges the gap to the next row while it is in the same folder
+        -- The accent bridges to the next row in the same folder
         local nextRow = rows[index + 1]
         local accentHeight = nextRow ~= nil and Sidebar.FolderOf(nextRow.entry.id) == nil
             and ENTRY_HEIGHT or ROW_HEIGHT
@@ -152,8 +147,8 @@ function Sidebar:DecorateRows()
             row.label.rgba = HEADING_TEXT
             row.label:SetPos(FOLDER_LABEL_LEFT, 0)
             row.label:SetSize(chevronLeft - FOLDER_LABEL_LEFT - 4, ROW_HEIGHT, 1.0, 0)
-            -- The bank arrow faces up and the host turns sprites anticlockwise: a half turn
-            -- faces down for an open folder, three quarters faces right
+            -- The arrow faces up and turns anticlockwise
+            -- A half turn points down for open, three quarters right
             local chevron = ui.Sprite.new(row.root)
             chevron:SetPos(chevronLeft, math.floor((ROW_HEIGHT - CHEVRON_SIZE) / 2), 1.0, 0)
             chevron:SetSize(CHEVRON_SIZE, CHEVRON_SIZE)

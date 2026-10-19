@@ -1,9 +1,6 @@
--- Load the real Bank Core beside the built Bank Cleaner in Bank Core's own stand-in host, so
--- tests drive Bank Cleaner only through Bank Core's public API and what a player does.
--- Bank Core is read, never changed, from BANKCORE_ROOT, which must be set.
+-- Load Bank Core from BANKCORE_ROOT beside the built Bank Cleaner
 -- FAKE HOST: stand-in loader, components, and widgets, not the game client
--- Adapted from Bank Tags' harness. Kept outside tests/ so tools/check.lua does not count it
--- as a test program
+-- Kept outside tests/ so tools/check.lua does not run it
 
 local Harness = {}
 
@@ -24,8 +21,8 @@ local function readText(path)
     return text
 end
 
--- Find Bank Core's checkout and let tests require its stand-in host modules. A checkout
--- without the API Bank Cleaner uses is refused rather than tested against
+-- Find Bank Core's checkout and add its stand-in host modules
+-- A checkout without the API Bank Cleaner uses is refused
 function Harness.CoreRoot()
     local root = os.getenv("BANKCORE_ROOT")
     if root == nil then error("set BANKCORE_ROOT to the Bank Core checkout the tests load", 0) end
@@ -41,16 +38,16 @@ function Harness.CoreRoot()
                 .. "to a checkout with the extension API Bank Cleaner uses", 0)
         end
     end
-    -- Bank Cleaner's own tools come first; Bank Core's fill in what Bank Cleaner lacks
+    -- Bank Cleaner's tools come first, then Bank Core's
     if not string.find(package.path, root .. "/?.lua", 1, true) then
         package.path = package.path .. ";" .. root .. "/?.lua"
     end
     return root
 end
 
--- Install the stand-in host and widgets, build Bank Cleaner into dist/test/<name>, and create
--- a loader. options.separateGlobals gives each plugin its own _G; options.cloneExports
--- injects an ordinary data clone of each export, as a host that clones exports would
+-- Install the stand-in host, build Bank Cleaner, and create a loader
+-- separateGlobals gives each plugin its own _G
+-- cloneExports injects a data copy of each export
 function Harness.new(name, options)
     options = options or {}
     local coreRoot = Harness.CoreRoot()
@@ -58,7 +55,7 @@ function Harness.new(name, options)
     bankHost:InstallSidebarWidgets()
     bankHost:InstallWindowWidgets()
     bankHost:InstallPanelWidgets()
-    -- Quest completion the quest rule reads; tests mark quests finished
+    -- Quest completion read by the quest rule
     local quests = {}
     config.Quest = { FromID = function(questID) return quests[questID] end }
     local contentSubscriptions = {}
@@ -96,7 +93,7 @@ function Harness.new(name, options)
     }, { __index = Harness })
 end
 
--- Load Bank Core from its source checkout, as a plugin with its own module cache
+-- Load Bank Core from its source checkout
 function Harness:LoadCore()
     self.core = self.host:Load("bankcore", self.coreFolder, nil, self.coreRoot)
     return self.core
@@ -118,7 +115,7 @@ function Harness:Session()
     return rawget(self.core.env._G, "__bankcore_session")
 end
 
--- Mount a bank window and open the bank for the running Core session in View All
+-- Open the bank in View All on a mounted window
 function Harness:OpenBank(width, height)
     if self.bankHost.window == nil then
         local window = self.bankHost:MountBankWindow(width or 714, height or 650)
@@ -130,7 +127,7 @@ function Harness:OpenBank(width, height)
     return session, session.layout
 end
 
--- Choose one of Bank Core's sidebar tabs, as clicking it in the tab rail does
+-- Choose a Core sidebar tab as the tab rail does
 function Harness:ChooseTab(ownerID, tabID)
     self:Session().layout:SetSidebarMode("__bankutils_ext_tab:" .. ownerID .. "/" .. tabID)
 end
@@ -140,7 +137,7 @@ function Harness:Tick(count)
     for _ = 1, count or 1 do self.bankHost:Tick() end
 end
 
--- Show the plugin's content panel, as selecting its ribbon icon does
+-- Show the plugin's content panel as its ribbon icon does
 function Harness:OpenContentPanel(event)
     local panel = ui.Layer.new(nil)
     panel:SetSize(300, 400)
@@ -148,7 +145,7 @@ function Harness:OpenContentPanel(event)
     return panel
 end
 
--- Find a component under a parent whose text or content matches, searching depth first
+-- Find a component whose text matches, depth first
 function Harness.Find(parent, text)
     for _, child in ipairs(parent.children or {}) do
         if not child.destroyed and not child.hidden then

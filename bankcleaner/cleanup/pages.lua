@@ -1,6 +1,4 @@
--- Describe the Cleanup tab's folders and one Bank Core page per category from the categories'
--- members. Every slot names an exact present stack, { item, copy }, of the snapshot the
--- members came from; categories are labelled with Bank Core's standard label rows
+-- Build the Cleanup tab's folders and a Bank Core page per category
 
 local Categories = require("bankcleaner/cleanup/categories")
 
@@ -14,7 +12,7 @@ Pages.BUSY = "..."
 -- The count column fits six characters
 local DETAIL_LIMIT = 999999
 
--- Name the page key for a category; it never changes, so a rescan keeps the scroll position
+-- Name a category's page key, stable so rescans keep scroll
 function Pages.Key(categoryID)
     return "cleanup:" .. categoryID
 end
@@ -26,8 +24,7 @@ local function slotRow(members)
     return { slots = slots }
 end
 
--- Lay out a category's members: its label and slots, or each non-empty section's label and
--- slots in the definition's order. A category with no members is one status label
+-- Lay out a category page by section, or a status label if empty
 function Pages.Layout(definition, members, scanning)
     if #members == 0 then return { { label = scanning and Pages.SCANNING or Pages.EMPTY } } end
     if definition.sections == nil then return { { label = definition.label }, slotRow(members) } end
@@ -51,7 +48,7 @@ function Pages.Page(definition, members, scanning)
         layout = Pages.Layout(definition, members, scanning) }
 end
 
--- Summarise a layout as text, so an unchanged page is not sent to Bank Core again
+-- Summarise a layout so unchanged pages are not resent
 function Pages.Signature(layout)
     local parts = {}
     for _, row in ipairs(layout) do
@@ -66,8 +63,7 @@ function Pages.Signature(layout)
     return table.concat(parts, "\n")
 end
 
--- Describe the Cleanup tab's folders: each group with its categories and their counts, or a
--- busy mark while objects are still being classified
+-- Describe the tab's folders with counts or a busy mark
 function Pages.Folders(members, scanning)
     local folders = {}
     for _, group in ipairs(Categories.GROUPS) do
@@ -84,7 +80,7 @@ function Pages.Folders(members, scanning)
     return folders
 end
 
--- Summarise the folders' counts as text, so unchanged counts do not redraw the rows
+-- Summarise folder counts so unchanged counts skip a redraw
 function Pages.FoldersSignature(folders)
     local parts = {}
     for _, folder in ipairs(folders) do
@@ -93,7 +89,7 @@ function Pages.FoldersSignature(folders)
     return table.concat(parts, " ")
 end
 
--- Describe the Cleanup tab, whose column the mount callbacks draw
+-- Describe the Cleanup tab drawn by the mount callbacks
 function Pages.Tab(mount)
     return { label = "Cleanup", icon = "ERASER", tooltip = "Items that belong in other storage", mount = mount }
 end

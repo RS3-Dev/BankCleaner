@@ -1,9 +1,6 @@
 package.path = "./?.lua;./?/init.lua;" .. package.path
 
--- Drive the built Bank Cleaner through the real Bank Core: the Cleanup tab's folders and
--- counts, redrawn in its mounted column rather than sent to Bank Core, pages of exact present stacks under standard label rows with no page heading,
--- status labels, inventory generations, unchanged pages not sent again, the scan only while
--- the categories are in view, and forgetting quest progress when the tab is chosen
+-- Drive the built Bank Cleaner through the real Bank Core
 -- FAKE HOST: stand-in loader, components, and widgets, not the game client
 
 local Harness = require("tools/test_support/cleaner_harness")
@@ -13,14 +10,14 @@ local MEMENTO, SILK_HOOD = 55623, 25835
 local QUEST_ITEM, EGG = 271, 1944
 local h = Harness.new("cleanup_app")
 local host = h.bankHost
--- Bank order: an iron bar, a bronze bar, a placeholder bronze bar, the optional focus item
--- before the recommended one, a quest item, an egg, and a second iron bar stack
+-- Bank order: two bars, a placeholder, focus items, a quest item,
+-- an egg, and a second iron bar stack
 host:SetItems({ { IRON_BAR, 5, "Iron bar" }, { BRONZE_BAR, 2, "Bronze bar" }, { BRONZE_BAR, 0 },
     { SILK_HOOD, 1, "Spider silk hood" }, { MEMENTO, 1, "Broken memento" }, { QUEST_ITEM, 1, "Quest item" },
     { EGG, 3, "Egg" }, { IRON_BAR, 7 } })
 
 local core = h:LoadCore()
--- Another plugin's tab sorts first, so the bank opens on it rather than on Cleanup
+-- Another tab sorts first, so the bank opens on it
 local other = assert(core.result.RegisterExtension("a.other", "Other"))
 assert(other:RegisterPage("eggs", { title = "Eggs", items = { EGG } }))
 assert(other:RegisterTab("main", { label = "Other", icon = "STAR", rows = { { page = "eggs" } } }))
@@ -70,8 +67,7 @@ local function tabRows()
     return table.concat(parts, " ")
 end
 
--- Describe the shown page top to bottom: its labels, and each drawn stack as object:copy,
--- with ghosts and placeholders marked
+-- Describe the shown page's labels and stacks as object:copy
 local function shown()
     local entries = {}
     for _, heading in ipairs(layout.pageState:GetLayoutSections()) do
@@ -96,13 +92,13 @@ local function openRow(categoryID)
     h:Tick(2)
 end
 
--- Before the tab is chosen nothing scans; its rows exist with a busy mark
+-- Nothing scans before the tab is chosen; rows show a busy mark
 h:Tick(3)
 assert(not app.scanning and not app.categories:HasSnapshot())
 h:ChooseTab("bankcleaner", "cleanup")
 h:Tick()
 assert(app.tabActive and app.categories:IsScanning() and app.scanning)
--- Eight distinct objects fit one batch; the scan publishes once and stops
+-- Eight objects fit one batch, so the scan publishes once
 h:Tick(3)
 assert(not app.scanning and not app:IsBusy())
 assert(tabRows() == table.concat({ "#Review (1)", "Quest Items=0", "#Utility storage (5)", "Metal Bank=3",
@@ -110,33 +106,31 @@ assert(tabRows() == table.concat({ "#Review (1)", "Quest Items=0", "#Utility sto
     "Treasure Chest=0", "Armour Case=0", "Magic Wardrobe=0", "Cape Store=0", "Toy Box=0",
     "Fancy Dress Box=0", "Bookcase=0" }, " "), tabRows())
 
--- Metal Bank: the standard label row, then exact present stacks in bank order; the
--- placeholder bronze bar is not on the page, and there is no page heading
+-- Metal Bank: a label row, then present stacks in bank order
 openRow("metal_bank")
 assert(layout.pageState.view.key == "cleanup:metal_bank")
 assert(shown() == "[Metal Bank] 2351:1 2349:1 2351:2", shown())
 local registered = service.pages["__bankutils_ext:bankcleaner/metal_bank"]
 assert(registered.heading == nil and registered.title == "Metal Bank")
 
--- Focus Storage: section labels in their order, whatever the bank order
+-- Focus Storage: sections in definition order
 openRow("focus_storage")
 assert(shown() == "[Focus: Recommended] 55623:1 [Focus: Optional] 25835:1", shown())
 
--- Quest Items: the quest is unfinished, so the page says none are in the bank
+-- Quest Items: the quest is unfinished, so the page is empty
 openRow("quest_items")
 assert(shown() == "[None of these items are in your bank.]", shown())
 takeUpdates()
 takeRedraws()
 
--- An inventory change that touches no category's members sends nothing to Bank Core and
--- leaves the tab's rows as they are
+-- A change outside every category sends nothing and keeps rows
 host:Rebuild(function(specs) specs[7][2] = 9 end)
 layout:HandleInventoryUpdate()
 h:Tick(4)
 assert(not app.categories:IsScanning() and takeUpdates() == "0/0" and takeRedraws() == 0)
 
--- Withdrawing the first iron bar stack removes it from Metal Bank at once, with no scan;
--- the second stack becomes copy 1 in the new generation
+-- Withdrawing a stack drops it at once without a scan
+-- The second stack becomes copy 1 in the new generation
 openRow("metal_bank")
 takeUpdates()
 host:Rebuild(function(specs)
@@ -148,11 +142,11 @@ h:Tick(4)
 assert(not app.scanning and app.categories.snapshot.generation == layout.itemsGeneration)
 assert(shown() == "[Metal Bank] 2349:1 2351:1", shown())
 assert(takeUpdates() == "1/0" and string.find(tabRows(), "Metal Bank=2", 1, true))
--- The page keeps its key, so the scroll position stays
+-- The page key is unchanged, so the scroll position stays
 assert(layout.pageState.view.key == "cleanup:metal_bank")
 
--- A new object waits for the scan: known members show at once, counts read "..." until
--- the batch finishes, and then the page and tab are sent once more
+-- A new object shows busy counts until the batch finishes
+-- Known members show at once, then the page and tab are resent
 host:Rebuild(function(specs)
     specs[#specs + 1] = { 44799, 1 }
     return specs
@@ -166,14 +160,14 @@ while not app.categories:IsScanning() and ticks < 4 do
 end
 assert(app.categories:IsScanning() and string.find(tabRows(), "Spirits=...", 1, true), tabRows())
 assert(string.find(tabRows(), "Metal Bank=...", 1, true))
--- The known members are already on the shown page; only the busy counts are redrawn
+-- Known members are already shown; only busy counts redraw
 assert(shown() == "[Metal Bank] 2349:1 2351:1" and takeUpdates() == "0/0", shown())
 h:Tick(4)
 assert(not app:IsBusy() and string.find(tabRows(), "Spirits=1", 1, true), tabRows())
 openRow("spirits")
 assert(shown() == "[Stone Spirits (ore box)] 44799:1", shown())
 
--- More new objects than one batch take several ticks, and pages are sent once at the end
+-- A large batch takes several ticks and publishes once
 local specs = {}
 for index = 1, 60 do specs[index] = { 30000 + index, 1 } end
 specs[#specs + 1] = { BRONZE_BAR, 2 }
@@ -185,8 +179,7 @@ assert(app.categories:IsScanning() and app.scanning)
 local afterRead = takeUpdates()
 h:Tick()
 assert(app.categories:IsScanning() and takeUpdates() == "0/0")
--- Two bank changes arrive mid-scan; the scan moves to the newest generation, keeping the
--- objects it already classified, and the bronze bar withdrawn meanwhile never shows
+-- The scan follows the newest generation, keeping what it classified
 local classified = 0
 for _ in pairs(app.categories.classes) do classified = classified + 1 end
 host:Rebuild(function(changed)
@@ -208,7 +201,7 @@ assert(afterRead ~= "0/0" and takeUpdates() ~= "0/0")
 openRow("metal_bank")
 assert(shown() == "[Metal Bank] 2353:1 2355:1", shown())
 
--- Leaving the tab and its pages stops the scan; nothing is read while out of view
+-- Leaving the tab and its pages stops the scan
 assert(app.handle:LeavePage())
 h:ChooseTab("bankcleaner", "cleanup")
 h:Tick(2)
@@ -221,7 +214,7 @@ layout:HandleInventoryUpdate()
 h:Tick(3)
 assert(app.categories.snapshot.generation == before and not app.scanning)
 
--- Choosing the tab again forgets every classification, so the finished quest now counts
+-- Choosing the tab forgets classifications, so the quest counts
 h.quests[15] = { hasFinishedQuest = true }
 host:SetItems({ { QUEST_ITEM, 1 }, { BRONZE_BAR, 2 } })
 layout:HandleInventoryUpdate()
@@ -234,7 +227,7 @@ assert(string.find(tabRows(), "Quest Items=1", 1, true), tabRows())
 openRow("quest_items")
 assert(shown() == "[Quest Items] 271:1", shown())
 
--- Closing the bank drops the snapshot; pages say the bank is being scanned until read again
+-- Closing the bank drops the snapshot until it is read again
 session.layout:Restore()
 h:Tick(2)
 assert(not app.categories:HasSnapshot() and not app.scanning)
