@@ -12,7 +12,7 @@ Pages.BUSY = "..."
 -- The count column fits six characters
 local DETAIL_LIMIT = 999999
 
--- Name a category's page key, stable so rescans keep scroll
+-- Name a category's page key; it stays the same so rescans keep scroll
 function Pages.Key(categoryID)
     return "cleanup:" .. categoryID
 end

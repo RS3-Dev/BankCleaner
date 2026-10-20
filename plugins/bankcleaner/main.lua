@@ -1,16 +1,16 @@
 -- Start Bank Cleaner on top of Bank Core
--- Core is optional only so the host reports its load and unload
+-- Core is marked optional so the host tells us when it loads or unloads
 
 local SESSION_KEY = "__bankcleaner_session"
 
 local previous = rawget(_G, SESSION_KEY)
 if previous ~= nil then pcall(function() previous:Shutdown() end) end
--- Reload shares the Lua state, so release the old reference before rebuilding modules
+-- A reload reuses the same Lua state, so drop the old app before loading modules again
 if rawget(_G, SESSION_KEY) == previous then _G[SESSION_KEY] = nil end
 previous = nil
 pcall(function() collectgarbage("collect") end)
 
--- The host keeps modules across reloads, so evict this plugin's cache
+-- The host keeps loaded modules across reloads, so clear this plugin's ones
 -- tools/build.lua fills in this list, so run the built folder
 if package ~= nil and package.loaded ~= nil then
     for _, moduleName in ipairs({

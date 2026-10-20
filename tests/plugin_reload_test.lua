@@ -51,7 +51,7 @@ h:OpenBank()
 h:Tick(4)
 assert(app.tabActive and app.published.metal_bank == "LMetal Bank\nS2349:1")
 
--- A cloned Core API still connects after a reload
+-- A copied Core API still connects after a reload
 h.host:Reload("bankcore", { shutdown = true })
 h.host.exports.bankcore = Loader.Clone(core.result)
 h.host:Notify("bankcore", true, true)
@@ -76,7 +76,7 @@ assert(reloaded:IsConnected() and not app:IsConnected())
 h:Tick(4)
 assert(reloaded.tabActive and reloaded.published.metal_bank == "LMetal Bank\nS2349:1")
 
--- A hot reload with a kept module cache still runs fresh modules
+-- A reload that keeps cached modules still runs fresh ones
 local cachedApp = h.cleaner.env.package.loaded["bankcleaner/app"]
 h.host:Reload("bankcleaner")
 local hot = h:App()
@@ -98,7 +98,7 @@ end
 assert(h:Session().layout:FindSidebarTab("__bankutils_ext_tab:bankcleaner/cleanup") == nil)
 h.host:Unload("bankcore")
 
--- Separate states: a newer copy takes the owner ID
+-- In separate Lua states, a newer copy takes the owner ID
 -- The older copy sees it was replaced and stays idle
 local split = Harness.new("plugin_reload_split", { separateGlobals = true, cloneExports = true })
 split:LoadCore()

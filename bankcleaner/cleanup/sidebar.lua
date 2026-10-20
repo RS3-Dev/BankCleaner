@@ -14,7 +14,7 @@ local CHEVRON_SIZE = 14
 local ACCENT_WIDTH = 2
 local COUNT_WIDTH = 42
 local FOLDER_PREFIX = "folder:"
--- Bank Tags' theme: gold headings over a warm folder row, members on a warmer zebra
+-- Bank Tags' theme: gold headings over a warm folder row, categories on warmer stripes
 local HEADING_TEXT = 0xE7C878FF
 local HEADING_LINE = 0x756C60FF
 local ROW_TEXT = 0xE7D7B0FF
@@ -134,7 +134,7 @@ function Sidebar:DecorateRows()
     for index, row in ipairs(rows) do
         -- PrettyUI may copy only known entry fields into its rows
         local entry = self.entriesByID[row.entry.id] or row.entry
-        -- The accent bridges to the next row in the same folder
+        -- The accent joins up with the next row in the same folder
         local nextRow = rows[index + 1]
         local accentHeight = nextRow ~= nil and Sidebar.FolderOf(nextRow.entry.id) == nil
             and ENTRY_HEIGHT or ROW_HEIGHT

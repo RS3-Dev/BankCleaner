@@ -107,7 +107,7 @@ assert(focus.sections[1].id == "recommended" and focus.sections[2].label == "Foc
 assert(Categories.Definition("spirits").sections[1].label == "Stone Spirits (ore box)")
 assert(Categories.Definition("metal_bank").sections == nil and Categories.Definition("missing") == nil)
 
--- Known objects need no scan when the generation changes
+-- Known objects need no scan when the bank changes
 local reads = questReads
 cleanup:Observe(snapshot(2, { { 100, 1 }, { 103, 4 }, { 102, 0 }, { 103, 2 } }))
 assert(not cleanup:IsScanning() and questReads == reads)
@@ -116,7 +116,7 @@ assert(listed(members, "metal_bank") == "")
 assert(listed(members, "quest_items") == "100:1 103:1 103:2")
 assert(listed(members, "toy_box") == "103:1 103:2")
 
--- The quest rule fails closed without quest data
+-- The quest rule leaves items out without quest data
 -- A later scan only adds new objects
 cleanup:Observe(snapshot(3, { { 105, 1 }, { 106, 1 } }))
 assert(cleanup:IsScanning() and cleanup:HasScanned())

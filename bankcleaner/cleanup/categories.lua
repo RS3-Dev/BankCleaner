@@ -50,7 +50,7 @@ local function questItems(objectID, _, context)
             finished = read(quest, "hasFinishedQuest") == true
             context.questStatus[questID] = finished
         end
-        -- Fail closed: missing records or state and unfinished quests stay out
+        -- Leave the item out if anything is missing or a quest is unfinished
         if finished ~= true then
             return false, "quest_incomplete_or_unknown"
         end
@@ -58,7 +58,7 @@ local function questItems(objectID, _, context)
     return true, "all_quests_complete"
 end
 
--- Create a rule backed by a generated item catalog
+-- Create a rule that checks a generated item list
 local function catalogItems(catalogField, reason)
     local absentReason = "not_" .. reason
     return function(objectID, _, context)
@@ -283,7 +283,7 @@ function Categories:HasScanned()
     return self.scanned
 end
 
--- Evaluate every category's rule for one object and cache the result
+-- Check every category's rule for one object and remember the result
 local function classify(self, objectID)
     local result = {}
     for _, definition in ipairs(DEFINITIONS) do

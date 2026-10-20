@@ -18,12 +18,12 @@ local REPLACED = "A newer copy of Bank Cleaner took over; this copy is idle."
 local SAVE_FAILED = "Bank Cleaner could not save which Cleanup folders are collapsed; they stay as shown until it reloads."
 -- Where the collapsed folders are saved: { collapsed = { group, ... } }
 local FOLDERS_KEY = "bankcleaner_folders"
--- Readiness reasons that mean the bank is not open at all
+-- Not-ready reasons that mean the bank is not open at all
 local CLOSED = { stale_api = true, not_ready = true, bank_closed = true }
 
 -- Find Bank Core's API, injected first, then published
 local function findBank()
-    -- Either may be nil, which would stop ipairs early
+    -- Either may be nil, so loop by index instead of ipairs
     local candidates = { bankcore, rawget(_G, CORE_API_KEY) }
     for index = 1, 2 do
         local candidate = candidates[index]
@@ -58,9 +58,9 @@ function App.new()
         -- Whether the Cleanup tab is in view, and its shown page
         tabActive = false,
         shownPage = nil,
-        -- Each page's last sent layout signature
+        -- A summary of each page's last sent layout
         published = {},
-        -- Tab folders, their count signature, and collapsed folders
+        -- Tab folders, a summary of their counts, and collapsed folders
         folders = nil,
         foldersSignature = nil,
         collapsed = loadCollapsed(),
@@ -198,7 +198,7 @@ function App:Connect()
     return true
 end
 
--- Drop the owner handle, the scan, and the bank snapshot
+-- Drop the owner handle, the scan, and the last bank read
 function App:Disconnect()
     self:StopScan()
     local handle = self.handle
@@ -271,12 +271,12 @@ function App:ToggleFolder(group)
     self:RefreshSidebar()
 end
 
--- Read a new bank generation if the categories are in view
+-- Reread the bank after it changes, if the categories are in view
 function App:OnBankItems()
     if self:IsWatching() then self:ReadBank() end
 end
 
--- Read and show the bank, keeping the snapshot while Core builds
+-- Read and show the bank, keeping the last items while Core builds
 function App:ReadBank()
     if self.handle == nil then return end
     local snapshot, reason = self.handle:GetBankItems()
@@ -289,7 +289,7 @@ function App:ReadBank()
     self:Follow()
 end
 
--- Scan while objects wait and the categories are in view
+-- Keep scanning while items are left and the categories are in view
 function App:Follow()
     if self.handle ~= nil and self:IsWatching() and self.categories:IsScanning() then
         self:StartScan()
@@ -298,7 +298,7 @@ function App:Follow()
     end
 end
 
--- Classify a batch each logic tick, then publish
+-- Classify a batch each tick, then send the results
 function App:StartScan()
     if self.scanning then return end
     self.scanning = true
@@ -313,7 +313,7 @@ function App:StartScan()
     end)
 end
 
--- Stop the scan listener; unclassified objects wait for the next one
+-- Stop the scan listener; unclassified items wait for the next scan
 function App:StopScan()
     if not self.scanning then return end
     self.scanning = false

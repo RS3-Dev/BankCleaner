@@ -98,7 +98,7 @@ assert(not app.scanning and not app.categories:HasSnapshot())
 h:ChooseTab("bankcleaner", "cleanup")
 h:Tick()
 assert(app.tabActive and app.categories:IsScanning() and app.scanning)
--- Eight objects fit one batch, so the scan publishes once
+-- Eight objects fit one batch, so the scan sends results once
 h:Tick(3)
 assert(not app.scanning and not app:IsBusy())
 assert(tabRows() == table.concat({ "#Review (1)", "Quest Items=0", "#Utility storage (5)", "Metal Bank=3",
@@ -130,7 +130,7 @@ h:Tick(4)
 assert(not app.categories:IsScanning() and takeUpdates() == "0/0" and takeRedraws() == 0)
 
 -- Withdrawing a stack drops it at once without a scan
--- The second stack becomes copy 1 in the new generation
+-- The second stack becomes copy 1 after the change
 openRow("metal_bank")
 takeUpdates()
 host:Rebuild(function(specs)
@@ -167,7 +167,7 @@ assert(not app:IsBusy() and string.find(tabRows(), "Spirits=1", 1, true), tabRow
 openRow("spirits")
 assert(shown() == "[Stone Spirits (ore box)] 44799:1", shown())
 
--- A large batch takes several ticks and publishes once
+-- A large batch takes several ticks and sends results once
 local specs = {}
 for index = 1, 60 do specs[index] = { 30000 + index, 1 } end
 specs[#specs + 1] = { BRONZE_BAR, 2 }
@@ -179,7 +179,7 @@ assert(app.categories:IsScanning() and app.scanning)
 local afterRead = takeUpdates()
 h:Tick()
 assert(app.categories:IsScanning() and takeUpdates() == "0/0")
--- The scan follows the newest generation, keeping what it classified
+-- The scan follows the latest bank change, keeping what it classified
 local classified = 0
 for _ in pairs(app.categories.classes) do classified = classified + 1 end
 host:Rebuild(function(changed)

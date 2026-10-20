@@ -120,7 +120,7 @@ assert(warnings == 1 and app.shownPage == nil and not framed(row("spirits")))
 layout.nativeViewAll = true
 layout.ShowViewAllWarning = warn
 
--- A taller bank refits the list once Core's watch sees it
+-- A taller bank refits the list once Core notices
 local list = app.sidebar.list
 local height = host.window.content.height + 60
 host.window.content:SetSize(host.window.content.width, height)
