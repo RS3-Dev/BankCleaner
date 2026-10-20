@@ -10,7 +10,7 @@ if rawget(_G, SESSION_KEY) == previous then _G[SESSION_KEY] = nil end
 previous = nil
 pcall(function() collectgarbage("collect") end)
 
--- The host keeps loaded modules across reloads, so clear this plugin's ones
+-- Clear this plugin's saved modules so a reload uses the latest code
 -- tools/build.lua fills in this list, so run the built folder
 if package ~= nil and package.loaded ~= nil then
     for _, moduleName in ipairs({
