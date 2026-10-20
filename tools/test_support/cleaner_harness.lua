@@ -58,15 +58,11 @@ function Harness.new(name, options)
     -- Quest completion read by the quest rule
     local quests = {}
     config.Quest = { FromID = function(questID) return quests[questID] end }
-    local contentSubscriptions = {}
-    for _, event in ipairs({ "GameStateChanged", "MiniMenuEntrySelected", "MiniMenuReady",
+    -- Bank Core still listens for its own plugin panel
+    for _, event in ipairs({ "GameStateChanged", "MiniMenuEntrySelected", "MiniMenuReady", "ContentLayerReady",
         "InventoryAdded", "InventoryRemoved", "InventoryUpdated" }) do
         Event[event] = { Subscribe = function() end, Unsubscribe = function() end }
     end
-    Event.ContentLayerReady = {
-        Subscribe = function(key, action) contentSubscriptions[key] = action end,
-        Unsubscribe = function(key) contentSubscriptions[key] = nil end,
-    }
     local Build = require("tools/build")
     local out = "dist/test/" .. name
     local built = Build.Run({ out = out })
@@ -84,7 +80,6 @@ function Harness.new(name, options)
         host = host,
         quests = quests,
         databases = databases,
-        contentSubscriptions = contentSubscriptions,
         coreRoot = coreRoot,
         out = out,
         coreFolder = coreRoot .. "/plugins/bankcore",
@@ -135,27 +130,6 @@ end
 -- Run logic ticks
 function Harness:Tick(count)
     for _ = 1, count or 1 do self.bankHost:Tick() end
-end
-
--- Show the plugin's content panel as its ribbon icon does
-function Harness:OpenContentPanel(event)
-    local panel = ui.Layer.new(nil)
-    panel:SetSize(300, 400)
-    self.contentSubscriptions[event or "bankcleaner_content"]({ component = panel })
-    return panel
-end
-
--- Find a component whose text matches, depth first
-function Harness.Find(parent, text)
-    for _, child in ipairs(parent.children or {}) do
-        if not child.destroyed and not child.hidden then
-            local content = child.content or (child.text and child.text.content)
-            if content == text then return child end
-            local found = Harness.Find(child, text)
-            if found ~= nil then return found end
-        end
-    end
-    return nil
 end
 
 return Harness

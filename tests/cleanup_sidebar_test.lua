@@ -6,7 +6,6 @@ package.path = "./?.lua;./?/init.lua;" .. package.path
 local Harness = require("tools/test_support/cleaner_harness")
 
 local BRONZE_BAR, IRON_BAR, EGG = 2349, 2351, 1944
-local SAVE_FAILED = "Bank Cleaner could not save which Cleanup folders are collapsed; they stay as shown until it reloads."
 local h = Harness.new("cleanup_sidebar")
 local host = h.bankHost
 host:SetItems({ { IRON_BAR, 5, "Iron bar" }, { EGG, 3, "Egg" } })
@@ -157,16 +156,13 @@ assert(next(h:App().collapsed) == nil)
 h:Tick(4)
 app = h:App()
 
--- A refused save keeps the folder and reports it on the panel
-local panel = h:OpenContentPanel()
+-- A refused save still keeps the folder as shown
 h.host.rejectWrites = true
 click("folder:Review")
-assert(app.collapsed.Review and #app.sidebar.list.rows == 15 and app.saveFailure == SAVE_FAILED)
-assert(string.find(panel.children[1].content, SAVE_FAILED, 1, true))
+assert(app.collapsed.Review and #app.sidebar.list.rows == 15)
 h.host.rejectWrites = false
 click("folder:Review")
-assert(app.collapsed.Review == nil and app.saveFailure == nil)
-assert(not string.find(panel.children[1].content, SAVE_FAILED, 1, true))
+assert(app.collapsed.Review == nil)
 
 h.host:Unload("bankcleaner")
 h.host:Unload("bankcore")

@@ -6,7 +6,7 @@ This describes what Bank Cleaner uses from Bank Core and the host. Bank Cleaner 
 
 - Plugin name `bankcleaner`. PrettyUI is required; `bankcore` is an optional dependency.
 - The entry returns nothing. The running session is `_G.__bankcleaner_session`; a new load shuts it down first, and it is cleared only while it still holds this load's value.
-- Event names start with `bankcleaner_`: `bankcleaner_scan` (the classification scan, subscribed only while it runs) and `bankcleaner_content` (the plugin panel).
+- Event names start with `bankcleaner_`: `bankcleaner_scan` (the classification scan, subscribed only while it runs). The manifest sets `hasRibbonIcon` to `false`, and Bank Cleaner does not subscribe to `Event.ContentLayerReady`.
 - Bank Cleaner saves only the collapsed Cleanup folders, under `bankcleaner_folders`.
 
 ## What Bank Cleaner uses from Bank Core
@@ -34,4 +34,4 @@ Only the public owner API in Bank Core's `HOST_CONTRACT.md`:
 
 ## Host behavior Bank Cleaner relies on
 
-Checked with Bank Core's stand-in host only: `config.Quest.FromID(id).hasFinishedQuest` for quest completion (any error, missing config, or unfinished quest leaves the item out), `PluginDependencyUpdate` on loads and reloads, `Event.Logic` and `Event.ContentLayerReady`, PrettyUI's `Text` on the plugin panel and `List` in the tab, `PersistentDB:GetStructuredData` and `SetStructuredData` for the collapsed folders, and the folder chevron's `id.Sprite.BANK_ARROW_UP_0` turned through the same sprite rotation fields Bank Tags sets.
+Checked with Bank Core's stand-in host only: `config.Quest.FromID(id).hasFinishedQuest` for quest completion (any error, missing config, or unfinished quest leaves the item out), `PluginDependencyUpdate` on loads and reloads, `Event.Logic`, PrettyUI's `List` in the tab, `PersistentDB:GetStructuredData` and `SetStructuredData` for the collapsed folders, and the folder chevron's `id.Sprite.BANK_ARROW_UP_0` turned through the same sprite rotation fields Bank Tags sets.

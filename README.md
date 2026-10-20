@@ -10,12 +10,12 @@ Everything here is checked against Bank Core's stand-in host only. Nothing in th
 - **Category pages.** Choosing a category shows that category's items (choosing it again returns to the bank) through a Bank Core page: the category's name as a label, then exactly the stacks the bank holds now, in bank order. Focus Storage and Spirits show each section under its own label (Focus: Recommended, Focus: Optional; Stone Spirits (ore box), Wood Spirits (wood box)), leaving out an empty section. An empty category says "None of these items are in your bank."
 - **Quest items** appear only when every quest the item belongs to is confirmed finished; anything the client cannot confirm stays out.
 - **Live pages.** A withdrawn item leaves its page as soon as Bank Core reports the bank changed; a deposited item joins once it has been checked. Choosing the Cleanup tab checks every item and quest again.
-- **Plugin panel.** Says whether Bank Cleaner is in the bank, or that Bank Core is needed.
+- **No plugin window entry.** Bank Cleaner has no ribbon icon or panel in the Plugins window; everything it shows is in the bank.
 
 ## Requirements and load order
 
 - **PrettyUI** is a required dependency.
-- **Bank Core** (`bankcore`) is needed for anything in the bank. It is declared as an optional dependency only because the host reports changes for optional dependencies. Without it, Bank Cleaner loads and its panel says Bank Core is needed.
+- **Bank Core** (`bankcore`) is needed for anything in the bank. It is declared as an optional dependency only because the host reports changes for optional dependencies. Without it, Bank Cleaner loads and waits, showing nothing.
 
 Any load order works: Bank Cleaner connects when Bank Core loads, reconnects when Bank Core reloads, and lets go when Bank Core unloads, through the host's `PluginDependencyUpdate`. Reloading Bank Cleaner shuts down the previous copy in the same Lua state first; a copy whose owner ID a newer load took stays idle.
 
@@ -23,7 +23,7 @@ Any load order works: Bank Cleaner connects when Bank Core loads, reconnects whe
 
 ## Saved data
 
-Bank Cleaner saves only which Cleanup folders are collapsed, under `bankcleaner_folders` as `{ collapsed = { <group>, ... } }`; names that are not current groups are ignored on load. If the client refuses the save, the folder stays as the player left it until Bank Cleaner reloads, and the plugin panel says so. It has no preferences, so it adds no section to Bank Core's settings window.
+Bank Cleaner saves only which Cleanup folders are collapsed, under `bankcleaner_folders` as `{ collapsed = { <group>, ... } }`; names that are not current groups are ignored on load. If the client refuses the save, the folder stays as the player left it until Bank Cleaner reloads. It has no preferences, so it adds no section to Bank Core's settings window.
 
 ## Changes from the old integrated plugin
 

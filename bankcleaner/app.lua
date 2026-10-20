@@ -11,11 +11,6 @@ local OWNER_ID = "bankcleaner"
 local OWNER_LABEL = "Bank Cleaner"
 local CORE_API_KEY = "__bankcore_api"
 local SCAN_EVENT = "bankcleaner_scan"
-local CONTENT_EVENT = "bankcleaner_content"
-local NOT_CONNECTED = "Bank Cleaner needs Bank Core. Enable Bank Core to see cleanup pages in your bank."
-local CONNECTED = "Bank Cleaner is in your bank: open the bank and choose the Cleanup tab in the sidebar."
-local REPLACED = "A newer copy of Bank Cleaner took over; this copy is idle."
-local SAVE_FAILED = "Bank Cleaner could not save which Cleanup folders are collapsed; they stay as shown until it reloads."
 -- Where the collapsed folders are saved: { collapsed = { group, ... } }
 local FOLDERS_KEY = "bankcleaner_folders"
 -- Not-ready reasons that mean the bank is not open at all
@@ -64,13 +59,9 @@ function App.new()
         folders = nil,
         foldersSignature = nil,
         collapsed = loadCollapsed(),
-        -- Mounted tab rows, and the last folder save error
+        -- Mounted tab rows
         sidebar = nil,
-        saveFailure = nil,
         scanning = false,
-        -- Bank Core's refusal reason for the plugin panel
-        failure = nil,
-        panel = nil,
         retired = false,
         started = false,
         shutDown = false,
@@ -94,11 +85,10 @@ function App.new()
     return self
 end
 
--- Subscribe to this plugin's panel and connect to Bank Core if it runs
+-- Connect to Bank Core if it runs
 function App:Start()
     if self.shutDown or self.started then return end
     self.started = true
-    Event.ContentLayerReady.Subscribe(CONTENT_EVENT, function(event) self:CreatePanel(event.component) end)
     self:Connect()
 end
 
@@ -123,16 +113,13 @@ function App:Publish(register)
         local page = Pages.Page(definition, members[definition.id], firstScan)
         local signature = Pages.Signature(page.layout)
         if register or self.published[definition.id] ~= signature then
-            local ok, reason
+            local ok
             if register then
-                ok, reason = handle:RegisterPage(definition.id, page)
+                ok = handle:RegisterPage(definition.id, page)
             else
-                ok, reason = handle:UpdatePage(definition.id, page)
+                ok = handle:UpdatePage(definition.id, page)
             end
-            if not ok then
-                self:Fail(definition.label .. " page", reason)
-                return false
-            end
+            if not ok then return false end
             self.published[definition.id] = signature
         end
     end
@@ -141,21 +128,11 @@ function App:Publish(register)
     local changed = self.foldersSignature ~= signature
     self.folders, self.foldersSignature = folders, signature
     if register then
-        local ok, reason = handle:RegisterTab(Pages.TAB_ID, Pages.Tab(self.mount))
-        if not ok then
-            self:Fail("Cleanup tab", reason)
-            return false
-        end
+        if not handle:RegisterTab(Pages.TAB_ID, Pages.Tab(self.mount)) then return false end
     elseif changed then
         self:RefreshSidebar()
     end
     return true
-end
-
--- Record a refused registration and show it on the panel
-function App:Fail(what, reason)
-    self.failure = "Bank Core refused the " .. what .. " (" .. tostring(reason) .. ")."
-    self:UpdatePanelNotice()
 end
 
 -- Register the pages, Cleanup tab, and listener
@@ -172,29 +149,20 @@ function App:Connect()
     local api = findBank()
     if api == nil then return false, "unavailable" end
     local handle, reason = api.RegisterExtension(OWNER_ID, OWNER_LABEL)
-    if handle == nil then
-        self:Fail("registration", reason)
-        return false, reason
-    end
-    self.bank, self.handle, self.failure = api, handle, nil
+    if handle == nil then return false, reason end
+    self.bank, self.handle = api, handle
     local ok = self:Publish(true)
     if ok then
-        local listening, failure = handle:SetListener({
+        ok = handle:SetListener({
             onState = function(state) self:OnState(state) end,
             onPage = function(pageID) self:OnPage(pageID) end,
             onBankItems = function() self:OnBankItems() end,
         })
-        if not listening then self:Fail("listener", failure) end
-        ok = listening
     end
     if not ok then
-        local failure = self.failure
         self:Disconnect()
-        self.failure = failure
-        self:UpdatePanelNotice()
         return false, "refused"
     end
-    self:UpdatePanelNotice()
     return true
 end
 
@@ -206,7 +174,6 @@ function App:Disconnect()
     self.tabActive, self.shownPage, self.published, self.foldersSignature = false, nil, {}, nil
     self.categories:Clear()
     if handle ~= nil then pcall(function() handle:Dispose() end) end
-    self:UpdatePanelNotice()
 end
 
 -- Report whether the Cleanup tab or one of its pages is shown
@@ -257,17 +224,14 @@ function App:ChooseCategory(ctx, categoryID)
 end
 
 -- Toggle a folder and save the collapsed folders
+-- A refused save leaves the folder as shown until Bank Cleaner reloads
 function App:ToggleFolder(group)
     self.collapsed[group] = not self.collapsed[group] or nil
     local collapsed = {}
     for _, name in ipairs(Categories.GROUPS) do
         if self.collapsed[name] then collapsed[#collapsed + 1] = name end
     end
-    local ok, saved = pcall(function()
-        return PersistentDB:SetStructuredData(FOLDERS_KEY, { collapsed = collapsed })
-    end)
-    self.saveFailure = not (ok and saved ~= false) and SAVE_FAILED or nil
-    self:UpdatePanelNotice()
+    pcall(function() PersistentDB:SetStructuredData(FOLDERS_KEY, { collapsed = collapsed }) end)
     self:RefreshSidebar()
 end
 
@@ -320,42 +284,10 @@ function App:StopScan()
     Event.Logic.Unsubscribe(SCAN_EVENT)
 end
 
--- Say whether Bank Cleaner is in the bank, or why not
-function App:PanelNotice()
-    if self.failure ~= nil then return self.failure end
-    local notice = self:IsConnected() and CONNECTED or self.retired and REPLACED or NOT_CONNECTED
-    return self.saveFailure ~= nil and notice .. " " .. self.saveFailure or notice
-end
-
--- Refresh the notice on an open plugin panel
-function App:UpdatePanelNotice()
-    if self.panel ~= nil then self.panel.content = self:PanelNotice() end
-end
-
--- Show the panel notice, connecting first if Bank Core started
-function App:CreatePanel(parent)
-    if self.shutDown then return end
-    self:Connect()
-    self:DestroyPanel()
-    self.panel = prettyui.Text.new(parent, {
-        text = self:PanelNotice(), x = 12, y = 12, width = math.max(1, (parent.width or 300) - 24),
-        height = 80, font = id.Font.MUSEO_SANS_11PT_REGULAR, colour = 0xD7C9ADFF, maxLines = 4,
-    })
-end
-
--- Release the panel's text
-function App:DestroyPanel()
-    local panel = self.panel
-    self.panel = nil
-    if panel ~= nil then pcall(function() panel:Destroy() end) end
-end
-
--- Release the panel, scan, and Bank Core registration
+-- Release the scan and Bank Core registration
 function App:Shutdown()
     if self.shutDown then return end
     self.shutDown = true
-    if self.started then Event.ContentLayerReady.Unsubscribe(CONTENT_EVENT) end
-    pcall(function() self:DestroyPanel() end)
     pcall(function() self:Disconnect() end)
 end
 

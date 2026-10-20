@@ -5,21 +5,23 @@ package.path = "./?.lua;./?/init.lua;" .. package.path
 
 local Harness = require("tools/test_support/cleaner_harness")
 
-local NOT_CONNECTED = "Bank Cleaner needs Bank Core. Enable Bank Core to see cleanup pages in your bank."
-local CONNECTED = "Bank Cleaner is in your bank: open the bank and choose the Cleanup tab in the sidebar."
-local REPLACED = "A newer copy of Bank Cleaner took over; this copy is idle."
-
 local h = Harness.new("plugin_reload")
 local Loader = require("tools/test_support/fake_plugin_host")
 h.bankHost:SetItems({ { 2349, 3, "Bronze bar" }, { 1944, 1, "Egg" } })
 
--- Without Bank Core, nothing is published and the panel says so
+-- Bank Cleaner has no plugin window entry, so it has no ribbon icon or panel
+local manifest = assert(io.open(h.cleanerFolder .. "/plugin.json", "rb"))
+assert(string.find(manifest:read("a"), '"hasRibbonIcon": false', 1, true))
+manifest:close()
+
+-- Without Bank Core, nothing is published
 local cleaner = h:LoadCleaner()
 local app = h:App()
 assert(app ~= nil and not app:IsConnected() and cleaner.result == nil)
 assert(type(rawget(cleaner.env, "PluginDependencyUpdate")) == "function")
-local panel = h:OpenContentPanel()
-assert(Harness.Find(panel, NOT_CONNECTED) ~= nil)
+for _, subscription in ipairs(h.host:SubscriptionsOf("bankcleaner")) do
+    assert(string.sub(subscription, 1, 18) ~= "ContentLayerReady.", subscription .. " is a plugin panel")
+end
 -- Only Bank Cleaner's own modules are in its cache
 for moduleName in pairs(cleaner.env.package.loaded) do
     assert(string.sub(moduleName, 1, 12) == "bankcleaner/", moduleName .. " is not a Bank Cleaner module")
@@ -28,7 +30,6 @@ end
 -- A late Core connects through the dependency update
 local core = h:LoadCore()
 assert(app:IsConnected() and app.bank == core.result)
-assert(Harness.Find(panel, CONNECTED) ~= nil)
 local state = app.handle:GetState()
 assert(#state.pages == 13 and state.tabs[1] == "cleanup")
 local _, layout = h:OpenBank()
@@ -57,10 +58,9 @@ h.host.exports.bankcore = Loader.Clone(core.result)
 h.host:Notify("bankcore", true, true)
 assert(app:IsConnected() and app.bank == h.host.exports.bankcore and getmetatable(app.bank) == nil)
 
--- Core unloading stops any scan and the panel says Core is needed
+-- Core unloading stops any scan
 h.host:Unload("bankcore")
 assert(not app:IsConnected() and not app.scanning)
-assert(Harness.Find(panel, NOT_CONNECTED) ~= nil)
 h:LoadCore()
 assert(app:IsConnected())
 h:OpenBank()
@@ -111,9 +111,5 @@ local secondApp = rawget(second.env, "__bankcleaner_session")
 assert(secondApp:IsConnected() and not firstApp:IsConnected())
 rawget(first.env, "PluginDependencyUpdate")({ pluginIdentifier = "bankcore", enabled = true })
 assert(firstApp.retired and not firstApp:IsConnected() and secondApp:IsConnected())
-local firstPanel = ui.Layer.new(nil)
-firstPanel:SetSize(300, 400)
-firstApp:CreatePanel(firstPanel)
-assert(Harness.Find(firstPanel, REPLACED) ~= nil)
 
 print("plugin_reload_test: ok")
