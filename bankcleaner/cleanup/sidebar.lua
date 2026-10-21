@@ -36,13 +36,13 @@ end
 
 -- List each folder and, while open, its categories with counts
 -- A collapsed folder holding the shown category gets the outline
-function Sidebar.Entries(folders, collapsed, shownPage)
+function Sidebar.Entries(folders, collapsed, shownCategory)
     local entries = {}
     for _, folder in ipairs(folders) do
         local expanded = not collapsed[folder.label]
         local holdsShown = false
         for _, category in ipairs(folder.categories) do
-            if category.id == shownPage then holdsShown = true end
+            if category.id == shownCategory then holdsShown = true end
         end
         entries[#entries + 1] = { id = FOLDER_PREFIX .. folder.label,
             label = folder.label .. " (" .. #folder.categories .. ")", enabled = true,
@@ -52,7 +52,7 @@ function Sidebar.Entries(folders, collapsed, shownPage)
         if expanded then
             for index, category in ipairs(folder.categories) do
                 entries[#entries + 1] = { id = category.id, label = category.label,
-                    detail = category.detail, enabled = true, selected = category.id == shownPage,
+                    detail = category.detail, enabled = true, selected = category.id == shownCategory,
                     backgroundColour = index % 2 == 1 and FOLDER_ROW_ODD or FOLDER_ROW_EVEN,
                     hoverColour = ROW_HOVER, selectedColour = ROW_SELECTED, textColour = ROW_TEXT }
             end

@@ -88,7 +88,7 @@ end
 
 -- Open a category's page from its row
 local function openRow(categoryID)
-    if app.shownPage ~= categoryID then assert(app.sidebar.list:Click(categoryID), categoryID) end
+    if app.shownCategory ~= categoryID then assert(app.sidebar.list:Click(categoryID), categoryID) end
     h:Tick(2)
 end
 
@@ -101,21 +101,26 @@ assert(app.tabActive and app.categories:IsScanning() and app.scanning)
 -- Eight objects fit one batch, so the scan sends results once
 h:Tick(3)
 assert(not app.scanning and not app:IsBusy())
-assert(tabRows() == table.concat({ "#Review (1)", "Quest Items=0", "#Utility storage (5)", "Metal Bank=3",
-    "Clue Carrier=0", "Tool Leprechaun=0", "Focus Storage=2", "Spirits=0", "#Player-owned house (7)",
-    "Treasure Chest=0", "Armour Case=0", "Magic Wardrobe=0", "Cape Store=0", "Toy Box=0",
-    "Fancy Dress Box=0", "Bookcase=0" }, " "), tabRows())
+assert(tabRows() == table.concat({ "#Review (3)", "Quest Items=0", "Storage Chest=0", "Diango Reclaimable=0",
+    "#Utility storage (6)", "Metal Bank=3", "Clue Carrier=0", "Tool Leprechaun=0", "Focus Storage=2", "Spirits=0",
+    "Storm Barn=0", "#Player-owned house (7)", "Treasure Chest=0", "Armour Case=0", "Magic Wardrobe=0",
+    "Cape Store=0", "Toy Box=0", "Fancy Dress Box=0", "Bookcase=0", "#Archaeology (2)",
+    "Archaeologist's Workbench=0", "Material Storage=0" }, " "), tabRows())
+-- Eighteen categories share one registered page, under Core's page limit
+assert(#app.handle:GetState().pages == 1 and app.handle:GetState().pages[1] == "cleanup")
 
 -- Metal Bank: a label row, then present stacks in bank order
 openRow("metal_bank")
-assert(layout.pageState.view.key == "cleanup:metal_bank")
+assert(layout.pageState.view.key == "cleanup:metal_bank" and app.category == "metal_bank")
 assert(shown() == "[Metal Bank] 2351:1 2349:1 2351:2", shown())
-local registered = service.pages["__bankutils_ext:bankcleaner/metal_bank"]
+local registered = service.pages["__bankutils_ext:bankcleaner/cleanup"]
 assert(registered.heading == nil and registered.title == "Metal Bank")
 
--- Focus Storage: sections in definition order
+-- Focus Storage: sections in definition order, on the same page with a new key
 openRow("focus_storage")
 assert(shown() == "[Focus: Recommended] 55623:1 [Focus: Optional] 25835:1", shown())
+assert(layout.pageState.view.key == "cleanup:focus_storage")
+assert(service.pages["__bankutils_ext:bankcleaner/cleanup"].title == "Focus Storage")
 
 -- Quest Items: the quest is unfinished, so the page is empty
 openRow("quest_items")
@@ -168,6 +173,8 @@ openRow("spirits")
 assert(shown() == "[Stone Spirits (ore box)] 44799:1", shown())
 
 -- A large batch takes several ticks and sends results once
+-- Only the shown category's page is sent, so hold one the batch changes
+openRow("metal_bank")
 local specs = {}
 for index = 1, 60 do specs[index] = { 30000 + index, 1 } end
 specs[#specs + 1] = { BRONZE_BAR, 2 }
@@ -208,7 +215,7 @@ h:Tick(2)
 local before = app.categories.snapshot.generation
 h:ChooseTab("a.other", "main")
 h:Tick(2)
-assert(not app.tabActive and app.shownPage == nil)
+assert(not app.tabActive and app.shownCategory == nil)
 host:SetItems({ { BRONZE_BAR, 2 }, { 44800, 1 } })
 layout:HandleInventoryUpdate()
 h:Tick(3)
@@ -227,11 +234,48 @@ assert(string.find(tabRows(), "Quest Items=1", 1, true), tabRows())
 openRow("quest_items")
 assert(shown() == "[Quest Items] 271:1", shown())
 
+-- A tall category keeps its scroll while the same key is rescanned
+local Diango = h.cleaner.env.package.loaded["bankcleaner/data/diango_objects"]
+local tall = {}
+for objectID in pairs(Diango.objects) do tall[#tall + 1] = objectID end
+table.sort(tall)
+specs = {}
+for index = 1, 120 do specs[index] = { tall[index], 1 } end
+specs[#specs + 1] = { BRONZE_BAR, 2 }
+host:SetItems(specs)
+layout:HandleInventoryUpdate()
+h:Tick(8)
+assert(not app:IsBusy() and string.find(tabRows(), "Diango Reclaimable=120", 1, true), tabRows())
+openRow("diango")
+assert(app.shownCategory == "diango" and layout.pageState.view.key == "cleanup:diango")
+assert(layout.listEngine:SetScrollPosition(200) and layout.listEngine.scrollY == 200)
+host:Rebuild(function(changed)
+    table.remove(changed, 1)
+    return changed
+end)
+layout:HandleInventoryUpdate()
+h:Tick(4)
+assert(string.find(tabRows(), "Diango Reclaimable=119", 1, true), tabRows())
+assert(layout.pageState.view.key == "cleanup:diango" and layout.listEngine.scrollY == 200, layout.listEngine.scrollY)
+
+-- Choosing another category changes the shown page's key, starting at the top
+openRow("metal_bank")
+assert(app.shownCategory == "metal_bank" and layout.pageState.view.key == "cleanup:metal_bank")
+assert(layout.listEngine.scrollY == 0 and shown() == "[Metal Bank] 2349:1", shown())
+assert(#app.handle:GetState().pages == 1)
+-- Choosing the shown category leaves the page, and choosing again opens it
+assert(app.sidebar.list:Click("metal_bank"))
+h:Tick(2)
+assert(app.shownCategory == nil and layout.selectedTag == nil and app.category == "metal_bank")
+openRow("diango")
+assert(app.shownCategory == "diango" and layout.pageState.view.key == "cleanup:diango")
+assert(layout.listEngine.scrollY == 0)
+
 -- Closing the bank drops the snapshot until it is read again
 session.layout:Restore()
 h:Tick(2)
 assert(not app.categories:HasSnapshot() and not app.scanning)
-assert(app.published.metal_bank == "LScanning bank...")
+assert(app.publishedPage == "cleanup:diango\nLScanning bank...", app.publishedPage)
 
 h.host:Unload("bankcleaner")
 h.host:Unload("bankcore")

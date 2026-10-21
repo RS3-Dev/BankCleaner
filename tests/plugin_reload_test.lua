@@ -31,10 +31,10 @@ end
 local core = h:LoadCore()
 assert(app:IsConnected() and app.bank == core.result)
 local state = app.handle:GetState()
-assert(#state.pages == 13 and state.tabs[1] == "cleanup")
+assert(#state.pages == 1 and state.pages[1] == "cleanup" and state.tabs[1] == "cleanup")
 local _, layout = h:OpenBank()
 h:Tick(4)
-assert(app.tabActive and not app:IsBusy() and app.published.metal_bank == "LMetal Bank\nS2349:1")
+assert(app.tabActive and not app:IsBusy() and string.find(app.foldersSignature, "metal_bank=1", 1, true))
 -- Opening the bank and the Cleanup tab saves nothing
 assert(next(h.databases.bankcleaner or {}) == nil)
 
@@ -42,15 +42,26 @@ assert(next(h.databases.bankcleaner or {}) == nil)
 rawget(cleaner.env, "PluginDependencyUpdate")({ pluginIdentifier = "bankcore", enabled = false })
 assert(not app:IsConnected() and app.handle == nil)
 rawget(cleaner.env, "PluginDependencyUpdate")({ pluginIdentifier = "bankcore", enabled = true })
-assert(app:IsConnected() and #app.handle:GetState().pages == 13)
+assert(app:IsConnected() and #app.handle:GetState().pages == 1)
 
 -- A Core reload reconnects to the new API and scans again
+-- The shown category is dropped; the shared page keeps the chosen category
+h:OpenBank()
+h:Tick(4)
+assert(app.sidebar.list:Click("metal_bank"))
+h:Tick(2)
+assert(app.shownCategory == "metal_bank")
 local oldAPI = core.result
 h.host:Reload("bankcore", { shutdown = true, notify = true, reinject = true })
 assert(not oldAPI.GetState().running and app:IsConnected() and app.bank == core.result)
-h:OpenBank()
+assert(app.shownCategory == nil and app.category == "metal_bank")
+assert(string.sub(app.publishedPage, 1, 19) == "cleanup:metal_bank\n", app.publishedPage)
+_, layout = h:OpenBank()
 h:Tick(4)
-assert(app.tabActive and app.published.metal_bank == "LMetal Bank\nS2349:1")
+assert(app.tabActive and string.find(app.foldersSignature, "metal_bank=1", 1, true))
+assert(app.sidebar.list:Click("metal_bank"))
+h:Tick(2)
+assert(app.shownCategory == "metal_bank" and layout.pageState.view.key == "cleanup:metal_bank")
 
 -- A copied Core API still connects after a reload
 h.host:Reload("bankcore", { shutdown = true })
@@ -74,7 +85,7 @@ assert(reloaded ~= app and app.shutDown and reloaded:IsConnected())
 rawget(cleaner.env, "PluginDependencyUpdate")({ pluginIdentifier = "bankcore", enabled = true })
 assert(reloaded:IsConnected() and not app:IsConnected())
 h:Tick(4)
-assert(reloaded.tabActive and reloaded.published.metal_bank == "LMetal Bank\nS2349:1")
+assert(reloaded.tabActive and string.find(reloaded.foldersSignature, "metal_bank=1", 1, true))
 
 -- A reload that keeps cached modules still runs fresh ones
 local cachedApp = h.cleaner.env.package.loaded["bankcleaner/app"]

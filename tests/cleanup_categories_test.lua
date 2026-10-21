@@ -36,6 +36,13 @@ local CATALOGS = {
     focusOptionalObjects = { [103] = true },
     stoneSpiritObjects = { [100] = true },
     woodSpiritObjects = { [101] = true },
+    -- 103 is a chest item and a quest item; 107 is only in the chest; 108's quest is unfinished
+    -- 109 has no quest to confirm, and 101 is a quest item whose quest 2 is unfinished
+    storageChestObjects = { [103] = { 1, 3 }, [107] = { 1 }, [108] = { 2 }, [109] = {} },
+    diangoObjects = { sections = {}, objects = { [104] = "s02", [110] = "s01" } },
+    stormBarnObjects = { sections = {}, objects = { [111] = "anachronia" } },
+    workbenchArtefactObjects = { [112] = true },
+    materialStorageObjects = { [113] = true },
 }
 
 -- Build a snapshot from { objectID, quantity } pairs
@@ -71,7 +78,14 @@ assert(table.concat(labels, ";") == table.concat({
     "cape_store=Cape Store@Player-owned house", "tool_leprechaun=Tool Leprechaun@Utility storage",
     "toy_box=Toy Box@Player-owned house", "fancy_dress_box=Fancy Dress Box@Player-owned house",
     "bookcase=Bookcase@Player-owned house", "focus_storage=Focus Storage@Utility storage",
-    "spirits=Spirits@Utility storage" }, ";"), table.concat(labels, ";"))
+    "spirits=Spirits@Utility storage", "storage_chest=Storage Chest@Review", "diango=Diango Reclaimable@Review",
+    "storm_barn=Storm Barn@Utility storage", "workbench=Archaeologist's Workbench@Archaeology",
+    "material_storage=Material Storage@Archaeology" }, ";"), table.concat(labels, ";"))
+-- Every category's group is a folder
+local groups = {}
+for _, group in ipairs(Categories.GROUPS) do groups[group] = true end
+for _, definition in ipairs(Categories.DEFINITIONS) do assert(groups[definition.group], definition.id) end
+assert(#Categories.GROUPS == 4 and Categories.GROUPS[4] == "Archaeology")
 
 local cleanup = Categories.new(CATALOGS)
 -- Nothing observed: nothing to scan and no members
@@ -106,6 +120,28 @@ local focus = Categories.Definition("focus_storage")
 assert(focus.sections[1].id == "recommended" and focus.sections[2].label == "Focus: Optional")
 assert(Categories.Definition("spirits").sections[1].label == "Stone Spirits (ore box)")
 assert(Categories.Definition("metal_bank").sections == nil and Categories.Definition("missing") == nil)
+local chest = Categories.Definition("storage_chest")
+assert(chest.sections[1].id == "non_reclaimable" and chest.sections[2].id == "reclaimable")
+
+-- Storage Chest: finished quest items the chest does not list are non-reclaimable
+-- Chest items need their own quests finished; unfinished or unknown quests stay out
+local storage = Categories.new(CATALOGS)
+storage:Observe(snapshot(1, { { 100, 1 }, { 101, 1 }, { 103, 1 }, { 107, 2 }, { 108, 1 }, { 109, 1 }, { 107, 0 } }))
+storage:Step()
+members = storage:Members()
+assert(listed(members, "storage_chest") == "100:1/non_reclaimable 103:1/reclaimable 107:1/reclaimable",
+    listed(members, "storage_chest"))
+-- Quest Items keeps its own rule: chest-only items are not quest items
+assert(listed(members, "quest_items") == "100:1 103:1", listed(members, "quest_items"))
+
+-- Sectioned catalogs give their section; others give none
+storage:Observe(snapshot(2, { { 110, 1 }, { 104, 3 }, { 111, 1 }, { 112, 1 }, { 113, 1 }, { 113, 0 } }))
+storage:Step()
+members = storage:Members()
+assert(listed(members, "diango") == "110:1/s01 104:1/s02", listed(members, "diango"))
+assert(listed(members, "storm_barn") == "111:1/anachronia")
+assert(listed(members, "workbench") == "112:1" and listed(members, "material_storage") == "113:1")
+assert(listed(members, "metal_bank") == "" and listed(members, "storage_chest") == "")
 
 -- Known objects need no scan when the bank changes
 local reads = questReads

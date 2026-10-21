@@ -12,6 +12,14 @@ local focus = Categories.Definition("focus_storage")
 -- A category without sections is a label and one row
 local page = Pages.Page(metal, { { objectID = 102, copy = 1 }, { objectID = 102, copy = 3 } }, false)
 assert(page.title == "Metal Bank" and page.key == "cleanup:metal_bank" and page.heading == nil)
+-- Every category shares one page; its key names the category
+assert(Pages.PAGE_ID == "cleanup" and Pages.CategoryOf(page.key) == "metal_bank")
+assert(Pages.CategoryOf("cleanup:storm_barn") == "storm_barn" and Pages.CategoryOf("cleanup:missing") == nil)
+assert(Pages.CategoryOf("tag:metal_bank") == nil and Pages.CategoryOf(nil) == nil)
+for _, definition in ipairs(Categories.DEFINITIONS) do
+    assert(Pages.CategoryOf(Pages.Key(definition.id)) == definition.id and #Pages.Key(definition.id) <= 128)
+    assert(#definition.label <= 80 and #definition.id <= 64)
+end
 assert(Pages.Signature(page.layout) == "LMetal Bank\nS102:1,102:3", Pages.Signature(page.layout))
 assert(page.layout[2].slots[2].item == 102 and page.layout[2].slots[2].copy == 3)
 
@@ -31,7 +39,16 @@ assert(Pages.Signature(Pages.Layout(metal, {}, true)) == "L" .. Pages.SCANNING)
 -- Known members show while scanning
 assert(Pages.Signature(Pages.Layout(metal, { { objectID = 1, copy = 1 } }, true)) == "LMetal Bank\nS1:1")
 
--- The tab shows the three groups in order, with counts
+-- A catalog's sections lay out in its order, each under its own label
+local diango = Categories.Definition("diango")
+layout = Pages.Layout(diango, {
+    { objectID = 5, copy = 1, section = diango.sections[3].id },
+    { objectID = 6, copy = 1, section = diango.sections[1].id },
+}, false)
+assert(Pages.Signature(layout) == "L" .. diango.sections[1].label .. "\nS6:1\nL" .. diango.sections[3].label
+    .. "\nS5:1", Pages.Signature(layout))
+
+-- The tab shows the four groups in order, with counts
 local members = {}
 for _, definition in ipairs(Categories.DEFINITIONS) do members[definition.id] = {} end
 members.metal_bank = { { objectID = 102, copy = 1 }, { objectID = 102, copy = 2 } }
@@ -41,10 +58,11 @@ for _, folder in ipairs(folders) do
     order[#order + 1] = folder.label
     for _, category in ipairs(folder.categories) do order[#order + 1] = category.id .. ":" .. category.detail end
 end
-assert(table.concat(order, " ") == table.concat({ "Review", "quest_items:0", "Utility storage", "metal_bank:2",
-    "clue_carrier:0", "tool_leprechaun:0", "focus_storage:0", "spirits:0", "Player-owned house",
-    "treasure_chest:0", "armour_case:0", "magic_wardrobe:0", "cape_store:0", "toy_box:0",
-    "fancy_dress_box:0", "bookcase:0" }, " "), table.concat(order, " "))
+assert(table.concat(order, " ") == table.concat({ "Review", "quest_items:0", "storage_chest:0", "diango:0",
+    "Utility storage", "metal_bank:2", "clue_carrier:0", "tool_leprechaun:0", "focus_storage:0", "spirits:0",
+    "storm_barn:0", "Player-owned house", "treasure_chest:0", "armour_case:0", "magic_wardrobe:0", "cape_store:0",
+    "toy_box:0", "fancy_dress_box:0", "bookcase:0", "Archaeology", "workbench:0", "material_storage:0" }, " "),
+    table.concat(order, " "))
 -- Every count is a busy mark while scanning
 local busy = Pages.Folders(members, true)
 assert(busy[1].categories[1].detail == Pages.BUSY)
@@ -71,17 +89,27 @@ local function describe(entries)
     return table.concat(parts, " ")
 end
 local entries = Sidebar.Entries(folders, {}, "metal_bank")
-assert(#entries == 16 and Sidebar.FolderOf(entries[1].id) == "Review" and entries[1].expanded)
-assert(describe(entries) == table.concat({ "#Review (1)", "Quest Items=0", "#Utility storage (5)", "Metal Bank=2*",
-    "Clue Carrier=0", "Tool Leprechaun=0", "Focus Storage=0", "Spirits=0", "#Player-owned house (7)",
-    "Treasure Chest=0", "Armour Case=0", "Magic Wardrobe=0", "Cape Store=0", "Toy Box=0", "Fancy Dress Box=0",
-    "Bookcase=0" }, " "), describe(entries))
-entries = Sidebar.Entries(folders, { ["Utility storage"] = true, ["Player-owned house"] = true }, "metal_bank")
-assert(describe(entries) == "#Review (1) Quest Items=0 #Utility storage (5)* #Player-owned house (7)", describe(entries))
-assert(not entries[3].expanded and Sidebar.FolderOf(entries[3].id) == "Utility storage")
+assert(#entries == 22 and Sidebar.FolderOf(entries[1].id) == "Review" and entries[1].expanded)
+assert(describe(entries) == table.concat({ "#Review (3)", "Quest Items=0", "Storage Chest=0",
+    "Diango Reclaimable=0", "#Utility storage (6)", "Metal Bank=2*", "Clue Carrier=0", "Tool Leprechaun=0",
+    "Focus Storage=0", "Spirits=0", "Storm Barn=0", "#Player-owned house (7)", "Treasure Chest=0", "Armour Case=0",
+    "Magic Wardrobe=0", "Cape Store=0", "Toy Box=0", "Fancy Dress Box=0", "Bookcase=0", "#Archaeology (2)",
+    "Archaeologist's Workbench=0", "Material Storage=0" }, " "), describe(entries))
+entries = Sidebar.Entries(folders, { Review = true, ["Utility storage"] = true, ["Player-owned house"] = true },
+    "metal_bank")
+assert(describe(entries) == "#Review (3) #Utility storage (6)* #Player-owned house (7) #Archaeology (2) "
+    .. "Archaeologist's Workbench=0 Material Storage=0", describe(entries))
+assert(not entries[2].expanded and Sidebar.FolderOf(entries[2].id) == "Utility storage")
+-- Only the shown category is outlined, even in another folder
+entries = Sidebar.Entries(folders, {}, "material_storage")
+local outlined = {}
+for _, entry in ipairs(entries) do
+    if entry.selected then outlined[#outlined + 1] = entry.id end
+end
+assert(#outlined == 1 and outlined[1] == "material_storage")
 -- No outline without the shown category, and no page selects nothing
 entries = Sidebar.Entries(folders, { Review = true }, nil)
-assert(describe(entries):sub(1, 33) == "#Review (1) #Utility storage (5) ", describe(entries))
+assert(describe(entries):sub(1, 33) == "#Review (3) #Utility storage (6) ", describe(entries))
 for _, entry in ipairs(entries) do assert(not entry.selected) end
 
 print("cleanup_pages_test: ok")

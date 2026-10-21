@@ -20,6 +20,11 @@ local DefaultFocusRecommendedObjects = require(
 local DefaultFocusOptionalObjects = require("bankcleaner/data/focus_storage_optional_objects")
 local DefaultStoneSpiritObjects = require("bankcleaner/data/stone_spirit_objects")
 local DefaultWoodSpiritObjects = require("bankcleaner/data/wood_spirit_objects")
+local DefaultStorageChestObjects = require("bankcleaner/data/storage_chest_objects")
+local DefaultDiangoObjects = require("bankcleaner/data/diango_objects")
+local DefaultStormBarnObjects = require("bankcleaner/data/storm_barn_objects")
+local DefaultWorkbenchArtefactObjects = require("bankcleaner/data/workbench_artefact_objects")
+local DefaultMaterialStorageObjects = require("bankcleaner/data/material_storage_objects")
 
 -- Read a host field that can be unavailable while configuration loads
 local function read(value, field)
@@ -28,9 +33,8 @@ local function read(value, field)
     return ok and result or nil
 end
 
--- Include quest items only when every associated quest is confirmed complete
-local function questItems(objectID, _, context)
-    local questIDs = context.objectQuests[objectID]
+-- Confirm every listed quest is finished, remembering each answer
+local function questsFinished(questIDs, context)
     if type(questIDs) ~= "table" or #questIDs == 0 then
         return false, "no_quests"
     end
@@ -56,6 +60,35 @@ local function questItems(objectID, _, context)
         end
     end
     return true, "all_quests_complete"
+end
+
+-- Include quest items only when every associated quest is confirmed complete
+local function questItems(objectID, _, context)
+    return questsFinished(context.objectQuests[objectID], context)
+end
+
+-- Split finished quests' items by whether the Storage Chest can return them
+-- A chest item needs its own quests finished; any other needs the quest item rule
+local function storageChestItems(objectID, _, context)
+    local chestQuests = context.storageChestObjects[objectID]
+    if chestQuests ~= nil then
+        local finished, reason = questsFinished(chestQuests, context)
+        if finished then return true, "storage_chest_reclaimable", "reclaimable" end
+        return false, reason
+    end
+    local finished, reason = questItems(objectID, nil, context)
+    if finished then return true, "storage_chest_not_reclaimable", "non_reclaimable" end
+    return false, reason
+end
+
+-- Create a rule that finds an object's section in a sectioned catalog
+local function sectionedItems(catalogField, reason)
+    local absentReason = "not_" .. reason
+    return function(objectID, _, context)
+        local section = context[catalogField].objects[objectID]
+        if section ~= nil then return true, reason, section end
+        return false, absentReason
+    end
 end
 
 -- Create a rule that checks a generated item list
@@ -178,10 +211,46 @@ local DEFINITIONS = {
             { id = "wood", label = "Wood Spirits (wood box)" },
         },
     },
+    {
+        id = "storage_chest",
+        label = "Storage Chest",
+        group = "Review",
+        evaluate = storageChestItems,
+        sections = {
+            { id = "non_reclaimable", label = "Non-reclaimable" },
+            { id = "reclaimable", label = "Reclaimable (chest unlock needed)" },
+        },
+    },
+    {
+        id = "diango",
+        label = "Diango Reclaimable",
+        group = "Review",
+        evaluate = sectionedItems("diangoObjects", "diango_reclaimable"),
+        sections = DefaultDiangoObjects.sections,
+    },
+    {
+        id = "storm_barn",
+        label = "Storm Barn",
+        group = "Utility storage",
+        evaluate = sectionedItems("stormBarnObjects", "storm_barn_storable"),
+        sections = DefaultStormBarnObjects.sections,
+    },
+    {
+        id = "workbench",
+        label = "Archaeologist's Workbench",
+        group = "Archaeology",
+        evaluate = catalogItems("workbenchArtefactObjects", "workbench_storable"),
+    },
+    {
+        id = "material_storage",
+        label = "Material Storage",
+        group = "Archaeology",
+        evaluate = catalogItems("materialStorageObjects", "material_storage_storable"),
+    },
 }
 
 -- The categories' group headings, in the order the tab shows them
-Categories.GROUPS = { "Review", "Utility storage", "Player-owned house" }
+Categories.GROUPS = { "Review", "Utility storage", "Player-owned house", "Archaeology" }
 Categories.DEFINITIONS = DEFINITIONS
 -- Objects classified per logic tick
 Categories.BATCH = 25
@@ -202,6 +271,11 @@ local CATALOGS = {
     focusOptionalObjects = DefaultFocusOptionalObjects,
     stoneSpiritObjects = DefaultStoneSpiritObjects,
     woodSpiritObjects = DefaultWoodSpiritObjects,
+    storageChestObjects = DefaultStorageChestObjects,
+    diangoObjects = DefaultDiangoObjects,
+    stormBarnObjects = DefaultStormBarnObjects,
+    workbenchArtefactObjects = DefaultWorkbenchArtefactObjects,
+    materialStorageObjects = DefaultMaterialStorageObjects,
 }
 
 -- Load the catalogs, with optional test overrides

@@ -59,9 +59,12 @@ end
 
 -- Every folder starts open, in group order, in Core's column
 assert(layout.tabMount ~= nil and app.sidebar ~= nil and app.sidebar.list.root.parent == app.sidebar.ctx.parent)
-assert(#app.sidebar.list.rows == 16)
-assert(string.sub(rows(), 1, 56) == "#Review (1) Quest Items=0 #Utility storage (5) Metal Ban", rows())
-assert(string.find(rows(), "Metal Bank=1 ", 1, true) and string.find(rows(), "#Player-owned house (7)", 1, true))
+assert(#app.sidebar.list.rows == 22)
+assert(string.find(rows(), "#Review (3) Quest Items=0 Storage Chest=0 Diango Reclaimable=0 "
+    .. "#Utility storage (6) Metal Bank=1 ", 1, true) == 1, rows())
+assert(string.find(rows(), "Storm Barn=0 #Player-owned house (7)", 1, true), rows())
+local archaeology = "#Archaeology (2) Archaeologist's Workbench=0 Material Storage=0"
+assert(string.sub(rows(), -#archaeology) == archaeology, rows())
 -- Folder and category names share an indent after the folder bar
 -- Each category shows its count at the right
 local folder, category = row("folder:Utility storage"), row("metal_bank")
@@ -75,24 +78,25 @@ assert(category.count.content == "1" and category.count.clickthrough)
 
 -- A folder click collapses it, saves, and keeps the page
 click("folder:Utility storage")
-assert(layout.selectedTag == nil and app.shownPage == nil)
-assert(rows() == "#Review (1) Quest Items=0 #Utility storage (5) #Player-owned house (7) Treasure Chest=0 "
-    .. "Armour Case=0 Magic Wardrobe=0 Cape Store=0 Toy Box=0 Fancy Dress Box=0 Bookcase=0", rows())
+assert(layout.selectedTag == nil and app.shownCategory == nil)
+assert(rows() == "#Review (3) Quest Items=0 Storage Chest=0 Diango Reclaimable=0 #Utility storage (6) "
+    .. "#Player-owned house (7) Treasure Chest=0 Armour Case=0 Magic Wardrobe=0 Cape Store=0 Toy Box=0 "
+    .. "Fancy Dress Box=0 Bookcase=0 #Archaeology (2) Archaeologist's Workbench=0 Material Storage=0", rows())
 local saved = h.databases.bankcleaner.bankcleaner_folders
 assert(#saved.collapsed == 1 and saved.collapsed[1] == "Utility storage")
 for _, child in ipairs(row("folder:Utility storage").root.children) do
     if child.spriteID == id.Sprite.BANK_ARROW_UP_0 then assert(child.rotation == math.pi * 1.5) end
 end
 click("folder:Utility storage")
-assert(#app.sidebar.list.rows == 16 and #h.databases.bankcleaner.bankcleaner_folders.collapsed == 0)
+assert(#app.sidebar.list.rows == 22 and #h.databases.bankcleaner.bankcleaner_folders.collapsed == 0)
 
 -- A category click opens and frames it; a second click leaves
 click("metal_bank")
-assert(app.shownPage == "metal_bank" and layout.pageState.view.key == "cleanup:metal_bank")
+assert(app.shownCategory == "metal_bank" and layout.pageState.view.key == "cleanup:metal_bank")
 assert(framed(row("metal_bank")) and not framed(row("folder:Utility storage")))
 -- Collapsing the shown category's folder moves the frame to it
 click("folder:Utility storage")
-assert(app.shownPage == "metal_bank" and framed(row("folder:Utility storage")), rows())
+assert(app.shownCategory == "metal_bank" and framed(row("folder:Utility storage")), rows())
 assert(not framed(row("folder:Review")))
 
 -- Collapsed counts stay current without a tab update
@@ -107,7 +111,7 @@ assert(not app:IsBusy() and tabUpdates == 0)
 click("folder:Utility storage")
 assert(row("metal_bank").count.content == "2" and framed(row("metal_bank")), rows())
 click("metal_bank")
-assert(app.shownPage == nil and layout.selectedTag == nil and not framed(row("metal_bank")))
+assert(app.shownCategory == nil and layout.selectedTag == nil and not framed(row("metal_bank")))
 
 -- A refused page shows View All guidance and selects no row
 local warnings = 0
@@ -115,9 +119,15 @@ local warn = layout.ShowViewAllWarning
 layout.ShowViewAllWarning = function() warnings = warnings + 1 end
 layout.nativeViewAll = false
 click("spirits")
-assert(warnings == 1 and app.shownPage == nil and not framed(row("spirits")))
+assert(warnings == 1 and app.shownCategory == nil and not framed(row("spirits")))
+for _, value in ipairs(app.sidebar.list.rows) do assert(not framed(value), value.entry.id) end
 layout.nativeViewAll = true
 layout.ShowViewAllWarning = warn
+-- Once View All allows it, the same row opens the shared page with its key
+click("spirits")
+assert(app.shownCategory == "spirits" and layout.pageState.view.key == "cleanup:spirits" and framed(row("spirits")))
+click("spirits")
+assert(app.shownCategory == nil and layout.selectedTag == nil)
 
 -- A taller bank refits the list once Core notices
 local list = app.sidebar.list
@@ -136,14 +146,14 @@ h:OpenBank()
 h:ChooseTab("bankcleaner", "cleanup")
 h:Tick(4)
 assert(app.sidebar ~= nil and app.sidebar.list ~= list)
-assert(string.sub(rows(), -23) == "#Player-owned house (7)" and #app.sidebar.list.rows == 9, rows())
+assert(string.find(rows(), "#Player-owned house (7) #Archaeology (2)", 1, true) and #app.sidebar.list.rows == 15, rows())
 
 -- A reload reads the saved folders back
 h.host:Reload("bankcleaner", { freshEnvironment = true })
 h:Tick(4)
 app = h:App()
 assert(app.collapsed["Player-owned house"] and app.collapsed.Review == nil)
-assert(#app.sidebar.list.rows == 9, rows())
+assert(#app.sidebar.list.rows == 15, rows())
 -- Saved values that are not group names are ignored
 h.databases.bankcleaner.bankcleaner_folders = { collapsed = { "Bogus", 5, "Review" } }
 h.host:Reload("bankcleaner", { freshEnvironment = true })
@@ -159,7 +169,7 @@ app = h:App()
 -- A refused save still keeps the folder as shown
 h.host.rejectWrites = true
 click("folder:Review")
-assert(app.collapsed.Review and #app.sidebar.list.rows == 15)
+assert(app.collapsed.Review and #app.sidebar.list.rows == 19)
 h.host.rejectWrites = false
 click("folder:Review")
 assert(app.collapsed.Review == nil)

@@ -50,11 +50,13 @@ function App.new()
         -- Bank Core's API and this plugin's owner handle
         bank = nil,
         handle = nil,
-        -- Whether the Cleanup tab is in view, and its shown page
+        -- Whether the Cleanup tab is in view
         tabActive = false,
-        shownPage = nil,
-        -- A summary of each page's last sent layout
-        published = {},
+        -- The category the shared page holds, and the one Bank Core reports shown
+        category = Categories.DEFINITIONS[1].id,
+        shownCategory = nil,
+        -- A summary of the shared page's last sent key and layout
+        publishedPage = nil,
         -- Tab folders, a summary of their counts, and collapsed folders
         folders = nil,
         foldersSignature = nil,
@@ -102,26 +104,24 @@ function App:IsBusy()
     return not self.categories:HasSnapshot() or self.categories:IsScanning()
 end
 
--- Send changed pages to Bank Core, or register everything
--- Empty pages say scanning only until the first scan ends
+-- Send the shared page if it changed, or register everything
+-- An empty page says scanning only until the first scan ends
 function App:Publish(register)
     local handle = self.handle
     if handle == nil then return true end
     local members, busy = self.categories:Members(), self:IsBusy()
-    local firstScan = not self.categories:HasScanned()
-    for _, definition in ipairs(Categories.DEFINITIONS) do
-        local page = Pages.Page(definition, members[definition.id], firstScan)
-        local signature = Pages.Signature(page.layout)
-        if register or self.published[definition.id] ~= signature then
-            local ok
-            if register then
-                ok = handle:RegisterPage(definition.id, page)
-            else
-                ok = handle:UpdatePage(definition.id, page)
-            end
-            if not ok then return false end
-            self.published[definition.id] = signature
+    local page = Pages.Page(Categories.Definition(self.category), members[self.category],
+        not self.categories:HasScanned())
+    local signature = page.key .. "\n" .. Pages.Signature(page.layout)
+    if register or self.publishedPage ~= signature then
+        local ok
+        if register then
+            ok = handle:RegisterPage(Pages.PAGE_ID, page)
+        else
+            ok = handle:UpdatePage(Pages.PAGE_ID, page)
         end
+        if not ok then return false end
+        self.publishedPage = signature
     end
     local folders = Pages.Folders(members, busy)
     local signature = Pages.FoldersSignature(folders)
@@ -155,7 +155,7 @@ function App:Connect()
     if ok then
         ok = handle:SetListener({
             onState = function(state) self:OnState(state) end,
-            onPage = function(pageID) self:OnPage(pageID) end,
+            onPage = function(pageID, key) self:OnPage(pageID, key) end,
             onBankItems = function() self:OnBankItems() end,
         })
     end
@@ -171,14 +171,14 @@ function App:Disconnect()
     self:StopScan()
     local handle = self.handle
     self.handle, self.bank = nil, nil
-    self.tabActive, self.shownPage, self.published, self.foldersSignature = false, nil, {}, nil
+    self.tabActive, self.shownCategory, self.publishedPage, self.foldersSignature = false, nil, nil, nil
     self.categories:Clear()
     if handle ~= nil then pcall(function() handle:Dispose() end) end
 end
 
--- Report whether the Cleanup tab or one of its pages is shown
+-- Report whether the Cleanup tab or a category is shown
 function App:IsWatching()
-    return self.tabActive or self.shownPage ~= nil
+    return self.tabActive or self.shownCategory ~= nil
 end
 
 -- Track the bank, rereading quest progress when Cleanup opens
@@ -188,7 +188,7 @@ function App:OnState(state)
     local activated = tabActive and not self.tabActive
     self.tabActive = tabActive
     if not open then
-        self.shownPage = nil
+        self.shownCategory = nil
         self:StopScan()
         self.categories:Clear()
         self:Publish(false)
@@ -201,25 +201,36 @@ function App:OnState(state)
     self:Follow()
 end
 
--- Track the shown category page, reading the bank on open
-function App:OnPage(pageID)
-    local watching, shown = self:IsWatching(), self.shownPage
-    self.shownPage = pageID
+-- Track the shown category from the page key, reading the bank on open
+function App:OnPage(pageID, key)
+    local watching, shown = self:IsWatching(), self.shownCategory
+    self.shownCategory = pageID == Pages.PAGE_ID and Pages.CategoryOf(key) or nil
     if not watching and self:IsWatching() then self:ReadBank() end
-    if shown ~= pageID then self:RefreshSidebar() end
+    if shown ~= self.shownCategory then self:RefreshSidebar() end
     self:Follow()
 end
 
 -- Redraw the mounted tab's rows
 function App:RefreshSidebar()
     if self.sidebar == nil or self.folders == nil then return end
-    self.sidebar:SetEntries(Sidebar.Entries(self.folders, self.collapsed, self.shownPage))
+    self.sidebar:SetEntries(Sidebar.Entries(self.folders, self.collapsed, self.shownCategory))
 end
 
--- Open or leave a category's page from its row
+-- Show a category on the shared page from its row, or leave it when shown
+-- A shown page changes in place; otherwise the page opens
 -- Rows are redrawn so a refused page leaves no selection
 function App:ChooseCategory(ctx, categoryID)
-    if categoryID == self.shownPage then ctx:LeavePage() else ctx:OpenPage(categoryID) end
+    if categoryID == self.shownCategory then
+        ctx:LeavePage()
+    else
+        local previous = self.category
+        self.category = categoryID
+        if not self:Publish(false) then
+            self.category = previous
+        elseif self.shownCategory == nil then
+            ctx:OpenPage(Pages.PAGE_ID)
+        end
+    end
     self:RefreshSidebar()
 end
 

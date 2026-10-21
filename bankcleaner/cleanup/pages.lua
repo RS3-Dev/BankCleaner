@@ -1,10 +1,13 @@
--- Build the Cleanup tab's folders and a Bank Core page per category
+-- Build the Cleanup tab's folders and the one Bank Core page every category shares
 
 local Categories = require("bankcleaner/cleanup/categories")
 
 local Pages = {}
 
 Pages.TAB_ID = "cleanup"
+-- The one registered page; its key names the category it shows
+Pages.PAGE_ID = "cleanup"
+local KEY_PREFIX = "cleanup:"
 Pages.EMPTY = "None of these items are in your bank."
 Pages.SCANNING = "Scanning bank..."
 -- The count shown beside a category while it may still change
@@ -14,7 +17,14 @@ local DETAIL_LIMIT = 999999
 
 -- Name a category's page key; it stays the same so rescans keep scroll
 function Pages.Key(categoryID)
-    return "cleanup:" .. categoryID
+    return KEY_PREFIX .. categoryID
+end
+
+-- Find the category a page key names, or nil
+function Pages.CategoryOf(key)
+    if type(key) ~= "string" or string.sub(key, 1, #KEY_PREFIX) ~= KEY_PREFIX then return nil end
+    local definition = Categories.Definition(string.sub(key, #KEY_PREFIX + 1))
+    return definition ~= nil and definition.id or nil
 end
 
 -- List one row of slots for members
