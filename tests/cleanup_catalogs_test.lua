@@ -36,15 +36,18 @@ assert(StorageChest[1586][1] == ObjectQuests[1586][1] and StorageChest[2402][1] 
 assert(ObjectQuests[284] == nil and StorageChest[284][1] == 39)
 -- Every version of a named item is listed
 for objectID = 44474, 44477 do assert(StorageChest[objectID][1] == 399, objectID) end
--- An item with no quest to confirm is listed but can never show
-assert(#StorageChest[30994] == 0)
+-- An item the infobox gives no quest takes an audited one from its page's prose
+assert(StorageChest[30994][1] == 434 and StorageChest[39241][1] == 386 and StorageChest[56771][1] == 511)
+-- An item that needs no quest is true
+assert(StorageChest[88] == true and StorageChest[89] == true and StorageChest[1575] == true)
 -- A quest item the chest does not list is absent
 assert(ObjectQuests[271] ~= nil and StorageChest[271] == nil and StorageChest[EGG] == nil)
-local unconfirmed = 0
+-- No item is left with no known quest
+local open, unconfirmed = 0, 0
 for _, quests in pairs(StorageChest) do
-    if #quests == 0 then unconfirmed = unconfirmed + 1 end
+    if quests == true then open = open + 1 elseif #quests == 0 then unconfirmed = unconfirmed + 1 end
 end
-assert(unconfirmed == 6, unconfirmed)
+assert(open == 3 and unconfirmed == 0, open .. " " .. unconfirmed)
 
 -- Diango: one section per wiki table, in page order, with unique IDs and short labels
 assert(#Diango.sections == 35 and count(Diango.objects) == 1604, count(Diango.objects))

@@ -68,9 +68,10 @@ local function questItems(objectID, _, context)
 end
 
 -- Split finished quests' items by whether the Storage Chest can return them
--- A chest item needs its own quests finished; any other needs the quest item rule
+-- A chest item needs its own quests finished, or none when its entry is true; any other needs the quest item rule
 local function storageChestItems(objectID, _, context)
     local chestQuests = context.storageChestObjects[objectID]
+    if chestQuests == true then return true, "storage_chest_reclaimable", "reclaimable" end
     if chestQuests ~= nil then
         local finished, reason = questsFinished(chestQuests, context)
         if finished then return true, "storage_chest_reclaimable", "reclaimable" end

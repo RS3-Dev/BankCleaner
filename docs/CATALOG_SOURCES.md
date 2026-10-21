@@ -7,6 +7,11 @@ Generated 2026-10-21 by `node tools/catalogs/generate_catalogs.mjs` from the Run
 | Page | Section | Revision |
 | --- | --- | --- |
 | [Storage Chest](https://runescape.wiki/w/Storage_Chest#Reclaimable_items) | Reclaimable items | 37213365 (2026-10-19T13:52:11Z) |
+| [Boots of lightness](https://runescape.wiki/w/Boots_of_lightness) |  | 37211091 (2026-10-17T06:15:18Z) |
+| [Cat training medal](https://runescape.wiki/w/Cat_training_medal) |  | 37012281 (2026-04-15T18:43:11Z) |
+| [Distorted engrammeter](https://runescape.wiki/w/Distorted_engrammeter) |  | 37013244 (2026-04-15T19:11:12Z) |
+| [Shard of Mah](https://runescape.wiki/w/Shard_of_Mah) |  | 36648096 (2025-02-02T10:16:31Z) |
+| [Zorgoth's soul ring](https://runescape.wiki/w/Zorgoth's_soul_ring) |  | 37034164 (2026-05-05T12:08:24Z) |
 | [Diango's Item Retrieval](https://runescape.wiki/w/Diango's_Item_Retrieval#Storable_rewards) | Storable rewards | 37051936 (2026-05-22T18:57:42Z) |
 | [Player-owned farm](https://runescape.wiki/w/Player-owned_farm#Animals) | Animals | 37110514 (2026-07-21T01:24:08Z) |
 | [Storm barn](https://runescape.wiki/w/Storm_barn) |  | 37058437 (2026-06-01T08:41:13Z) |
@@ -17,21 +22,23 @@ Generated 2026-10-21 by `node tools/catalogs/generate_catalogs.mjs` from the Run
 
 ## Storage Chest
 
-`storage_chest_objects.lua`: 105 objects from 97 named items (each table row, plus an alternative it names, such as the engrammeter or the ring of charos (a)). The wiki lists only reclaimable items. Each object carries the quests that must be confirmed finished before it shows: Bank Utilities' `object_quests` when it has the object (39), otherwise the quest links in the item's infobox mapped to quest IDs through the `infobox_quest` bucket (66); an object with neither (6) is listed with no quests and never shows. Of the objects `object_quests` covers, the infobox links every one of its quests for 25, links no quest for 14, and conflicts for 0. The chest is members only and needs 150 quest points allocated to the caravan's Hub Track.
+`storage_chest_objects.lua`: 105 objects from 97 named items (each table row, plus an alternative it names, such as the engrammeter or the ring of charos (a)). The wiki lists only reclaimable items. Each object carries the quests that must be confirmed finished before it shows: Bank Utilities' `object_quests` when it has the object (39), otherwise the quest links in the item's infobox mapped to quest IDs through the `infobox_quest` bucket (66), otherwise an audited source read from the item page's prose (`CHEST_SOURCES` in the generator, 6), which can say no quest is needed (`true` in the catalog). An object with none of these (0) is listed with no quests and never shows. Of the objects `object_quests` covers, the infobox links every one of its quests for 25, links no quest for 14, and conflicts for 0. The chest is members only and needs 150 quest points allocated to the caravan's Hub Track.
 
-- Unresolved entries: 6
-  - 88 Boots of lightness (Inventory): no quest to confirm, so never shown
-  - 89 Boots of lightness (worn): no quest to confirm, so never shown
-  - 1575 Cat training medal: no quest to confirm, so never shown
-  - 30994 Distorted engrammeter: no quest to confirm, so never shown
-  - 39241 Shard of Mah: no quest to confirm, so never shown
-  - 56771 Zorgoth's soul ring: no quest to confirm, so never shown
+- Audited sources: 6
+  - 88 Boots of lightness (Inventory): no quest needed; obtainable by any member without starting Temple of Ikov ([wiki](https://runescape.wiki/w/Boots_of_lightness))
+  - 89 Boots of lightness (worn): no quest needed; obtainable by any member without starting Temple of Ikov ([wiki](https://runescape.wiki/w/Boots_of_lightness))
+  - 1575 Cat training medal: no quest needed; earned from Gertrude by catching 100 rats ([wiki](https://runescape.wiki/w/Cat_training_medal))
+  - 30994 Distorted engrammeter: quests 434; made from the engrammeter after completing Mahjarrat Memories (miniquest) ([wiki](https://runescape.wiki/w/Distorted_engrammeter))
+  - 39241 Shard of Mah: quests 386; obtained after completing Children of Mah ([wiki](https://runescape.wiki/w/Shard_of_Mah))
+  - 56771 Zorgoth's soul ring: quests 511; upgraded from Zorgoth's ring, a reward from Requiem for a Dragon ([wiki](https://runescape.wiki/w/Zorgoth's_soul_ring))
+- Unresolved entries: 0
 - Excluded: 0
-- Notes: 4
+- Notes: 5
   - Blank observation: unless used to upgrade Pontifex observation ring
   - Bob's collar: unless returned to Bob
   - Hazeel's mark: if supported Hazeel's cultists
   - Old necklace: unless used to upgrade to Necklace of Charos
+  - Cat training medal: a known bug keeps the chest from returning it for some players
 
 ## Diango's Item Retrieval
 

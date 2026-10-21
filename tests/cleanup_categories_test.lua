@@ -37,8 +37,8 @@ local CATALOGS = {
     stoneSpiritObjects = { [100] = true },
     woodSpiritObjects = { [101] = true },
     -- 103 is a chest item and a quest item; 107 is only in the chest; 108's quest is unfinished
-    -- 109 has no quest to confirm, and 101 is a quest item whose quest 2 is unfinished
-    storageChestObjects = { [103] = { 1, 3 }, [107] = { 1 }, [108] = { 2 }, [109] = {} },
+    -- 109 has no quest to confirm, 114 needs no quest, and 101 is a quest item whose quest 2 is unfinished
+    storageChestObjects = { [103] = { 1, 3 }, [107] = { 1 }, [108] = { 2 }, [109] = {}, [114] = true },
     diangoObjects = { sections = {}, objects = { [104] = "s02", [110] = "s01" } },
     stormBarnObjects = { sections = {}, objects = { [111] = "anachronia" } },
     workbenchArtefactObjects = { [112] = true },
@@ -124,12 +124,12 @@ local chest = Categories.Definition("storage_chest")
 assert(chest.sections[1].id == "non_reclaimable" and chest.sections[2].id == "reclaimable")
 
 -- Storage Chest: finished quest items the chest does not list are non-reclaimable
--- Chest items need their own quests finished; unfinished or unknown quests stay out
+-- Chest items need their own quests finished, or none when marked so; unfinished or unknown quests stay out
 local storage = Categories.new(CATALOGS)
-storage:Observe(snapshot(1, { { 100, 1 }, { 101, 1 }, { 103, 1 }, { 107, 2 }, { 108, 1 }, { 109, 1 }, { 107, 0 } }))
+storage:Observe(snapshot(1, { { 100, 1 }, { 101, 1 }, { 103, 1 }, { 107, 2 }, { 108, 1 }, { 109, 1 }, { 114, 1 }, { 107, 0 } }))
 storage:Step()
 members = storage:Members()
-assert(listed(members, "storage_chest") == "100:1/non_reclaimable 103:1/reclaimable 107:1/reclaimable",
+assert(listed(members, "storage_chest") == "100:1/non_reclaimable 103:1/reclaimable 107:1/reclaimable 114:1/reclaimable",
     listed(members, "storage_chest"))
 -- Quest Items keeps its own rule: chest-only items are not quest items
 assert(listed(members, "quest_items") == "100:1 103:1", listed(members, "quest_items"))
