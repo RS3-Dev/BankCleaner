@@ -78,7 +78,7 @@ assert(category.count.content == "1" and category.count.clickthrough)
 
 -- A folder click collapses it, saves, and keeps the page
 click("folder:Utility storage")
-assert(layout.selectedTag == nil and app.shownCategory == nil)
+assert(layout.selection == nil and app.shownCategory == nil)
 assert(rows() == "#Review (3) Quest Items=0 Storage Chest=0 Diango Reclaimable=0 #Utility storage (6) "
     .. "#Player-owned house (7) Treasure Chest=0 Armour Case=0 Magic Wardrobe=0 Cape Store=0 Toy Box=0 "
     .. "Fancy Dress Box=0 Bookcase=0 #Archaeology (2) Archaeologist's Workbench=0 Material Storage=0", rows())
@@ -111,7 +111,7 @@ assert(not app:IsBusy() and tabUpdates == 0)
 click("folder:Utility storage")
 assert(row("metal_bank").count.content == "2" and framed(row("metal_bank")), rows())
 click("metal_bank")
-assert(app.shownCategory == nil and layout.selectedTag == nil and not framed(row("metal_bank")))
+assert(app.shownCategory == nil and layout.selection == nil and not framed(row("metal_bank")))
 
 -- A refused page shows View All guidance and selects no row
 local warnings = 0
@@ -127,7 +127,7 @@ layout.ShowViewAllWarning = warn
 click("spirits")
 assert(app.shownCategory == "spirits" and layout.pageState.view.key == "cleanup:spirits" and framed(row("spirits")))
 click("spirits")
-assert(app.shownCategory == nil and layout.selectedTag == nil)
+assert(app.shownCategory == nil and layout.selection == nil)
 
 -- A taller bank refits the list once Core notices
 local list = app.sidebar.list

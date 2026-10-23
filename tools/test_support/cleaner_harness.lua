@@ -32,7 +32,7 @@ function Harness.CoreRoot()
     end
     local contract = readText(root .. "/HOST_CONTRACT.md") or ""
     for _, needed in ipairs({ "PluginDependencyUpdate(event)", "the root is a plain table", "onBankItems",
-        "GetBankItems", "`{ label = text }` or `{ slots = list }`", "detail" }) do
+        "GetBankItems", "`{ label = text }` or `{ slots = list }`" }) do
         if not string.find(contract, needed, 1, true) then
             error("Bank Core at " .. root .. " lacks " .. needed .. " in its contract; set BANKCORE_ROOT "
                 .. "to a checkout with the extension API Bank Cleaner uses", 0)

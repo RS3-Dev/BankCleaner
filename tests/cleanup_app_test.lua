@@ -20,7 +20,7 @@ local core = h:LoadCore()
 -- Another tab sorts first, so the bank opens on it
 local other = assert(core.result.RegisterExtension("a.other", "Other"))
 assert(other:RegisterPage("eggs", { title = "Eggs", items = { EGG } }))
-assert(other:RegisterTab("main", { label = "Other", icon = "STAR", rows = { { page = "eggs" } } }))
+assert(other:RegisterTab("main", { label = "Other", icon = "STAR", mount = { mount = function() end } }))
 h:LoadCleaner()
 local app = h:App()
 local Sidebar = h.cleaner.env.package.loaded["bankcleaner/cleanup/sidebar"]
@@ -266,7 +266,7 @@ assert(#app.handle:GetState().pages == 1)
 -- Choosing the shown category leaves the page, and choosing again opens it
 assert(app.sidebar.list:Click("metal_bank"))
 h:Tick(2)
-assert(app.shownCategory == nil and layout.selectedTag == nil and app.category == "metal_bank")
+assert(app.shownCategory == nil and layout.selection == nil and app.category == "metal_bank")
 openRow("diango")
 assert(app.shownCategory == "diango" and layout.pageState.view.key == "cleanup:diango")
 assert(layout.listEngine.scrollY == 0)
