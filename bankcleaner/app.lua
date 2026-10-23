@@ -228,7 +228,12 @@ function App:ChooseCategory(ctx, categoryID)
         if not self:Publish(false) then
             self.category = previous
         elseif self.shownCategory == nil then
-            ctx:OpenPage(Pages.PAGE_ID)
+            local opened, reason = ctx:OpenPage(Pages.PAGE_ID)
+            if not opened and reason == "not_all_items" then
+                self.handle:ShowWarning('Select "All Items" to review these items.')
+            elseif not opened and reason == "preset_open" then
+                self.handle:ShowWarning('Close the preset selector to review these items.')
+            end
         end
     end
     self:RefreshSidebar()

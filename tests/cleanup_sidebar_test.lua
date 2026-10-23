@@ -119,10 +119,11 @@ local warn = layout.ShowViewAllWarning
 layout.ShowViewAllWarning = function() warnings = warnings + 1 end
 layout.nativeViewAll = false
 click("spirits")
-assert(warnings == 1 and app.shownCategory == nil and not framed(row("spirits")))
+assert(layout.warningPanel.children[3].content == 'Select "All Items" to review these items.')
+assert(app.shownCategory == nil and not framed(row("spirits")))
 for _, value in ipairs(app.sidebar.list.rows) do assert(not framed(value), value.entry.id) end
 layout.nativeViewAll = true
-layout.ShowViewAllWarning = warn
+layout:StopWarning()
 -- Once View All allows it, the same row opens the shared page with its key
 click("spirits")
 assert(app.shownCategory == "spirits" and layout.pageState.view.key == "cleanup:spirits" and framed(row("spirits")))
