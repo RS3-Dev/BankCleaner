@@ -19,7 +19,7 @@ host:SetItems({ { IRON_BAR, 5, "Iron bar" }, { BRONZE_BAR, 2, "Bronze bar" }, { 
 local core = h:LoadCore()
 -- Another tab sorts first, so the bank opens on it
 local other = assert(core.result.RegisterExtension("a.other", "Other"))
-assert(other:RegisterPage("eggs", { title = "Eggs", items = { EGG } }))
+assert(other:RegisterPage("eggs", { title = "Eggs", layout = { { slots = { EGG } } } }))
 assert(other:RegisterTab("main", { label = "Other", icon = "STAR", mount = { mount = function() end } }))
 h:LoadCleaner()
 local app = h:App()
