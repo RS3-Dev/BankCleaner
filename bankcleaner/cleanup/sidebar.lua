@@ -1,5 +1,7 @@
 -- Draw the Cleanup tab's folder and category rows
 
+local Icons = require("bankcleaner/data/sidebar_icons")
+
 local Sidebar = {}
 Sidebar.__index = Sidebar
 
@@ -8,6 +10,9 @@ local LIST_TOP = 8
 local LIST_BOTTOM = 8
 local ENTRY_HEIGHT = 32
 local ROW_HEIGHT = 30
+local ROW_LEFT = 6
+local ICON_SIZE = 24
+local ICON_GAP = 4
 local FOLDER_LABEL_LEFT = 26
 local CHEVRON_RIGHT = 8
 local CHEVRON_SIZE = 14
@@ -23,7 +28,7 @@ local INNER_FRAME = 0x806432FF
 local SELECTED_BORDER = 0xD2A84DFF
 local ROW_HOVER = 0x403728FF
 local ROW_SELECTED = 0x49371FFF
-local FOLDER_ROW = 0x302A21FF
+local FOLDER_ROW = 0x3B352DFF
 local FOLDER_ROW_ODD = 0x27231DFF
 local FOLDER_ROW_EVEN = 0x2D2823FF
 
@@ -45,6 +50,7 @@ function Sidebar.Entries(folders, collapsed, shownCategory)
             if category.id == shownCategory then holdsShown = true end
         end
         entries[#entries + 1] = { id = FOLDER_PREFIX .. folder.label,
+            objectID = Icons.folders[folder.label],
             label = folder.label .. " (" .. #folder.categories .. ")", enabled = true,
             expanded = expanded, selected = holdsShown and not expanded,
             backgroundColour = FOLDER_ROW, hoverColour = ROW_HOVER, selectedColour = ROW_SELECTED,
@@ -52,6 +58,7 @@ function Sidebar.Entries(folders, collapsed, shownCategory)
         if expanded then
             for index, category in ipairs(folder.categories) do
                 entries[#entries + 1] = { id = category.id, label = category.label,
+                    objectID = Icons.categories[category.id],
                     detail = category.detail, enabled = true, selected = category.id == shownCategory,
                     backgroundColour = index % 2 == 1 and FOLDER_ROW_ODD or FOLDER_ROW_EVEN,
                     hoverColour = ROW_HOVER, selectedColour = ROW_SELECTED, textColour = ROW_TEXT }
@@ -128,6 +135,17 @@ local function rotate(sprite, radians, degrees)
     pcall(function() sprite.angleDegrees = degrees end)
 end
 
+-- Draw item icons with Bank Tags' size and spacing
+local function addRowIcon(row, objectID, left)
+    local icon = ui.Sprite.new(row.root)
+    icon:SetPos(left, 3)
+    icon:SetSize(ICON_SIZE, ICON_SIZE)
+    icon:SetAssociatedObject(objectID)
+    icon.associatedObjectQuantityMode = ui.ObjectQuantityDisplayMode.NEVER
+    icon.clickthrough = true
+    icon:MoveToFront()
+end
+
 -- Add chevrons, accents, indents, counts, and selection frames
 function Sidebar:DecorateRows()
     local rows = self.list.rows or {}
@@ -144,9 +162,11 @@ function Sidebar:DecorateRows()
         row.root.cursorConfig.mouseOverCursor = -1
         if Sidebar.FolderOf(entry.id) ~= nil then
             local chevronLeft = -CHEVRON_RIGHT - CHEVRON_SIZE
+            local labelLeft = ROW_LEFT + ICON_SIZE + ICON_GAP
+            addRowIcon(row, entry.objectID, ROW_LEFT)
             row.label.rgba = HEADING_TEXT
-            row.label:SetPos(FOLDER_LABEL_LEFT, 0)
-            row.label:SetSize(chevronLeft - FOLDER_LABEL_LEFT - 4, ROW_HEIGHT, 1.0, 0)
+            row.label:SetPos(labelLeft, 0)
+            row.label:SetSize(chevronLeft - labelLeft - 4, ROW_HEIGHT, 1.0, 0)
             -- The arrow faces up and turns anticlockwise
             -- A half turn points down for open, three quarters right
             local chevron = ui.Sprite.new(row.root)
@@ -158,9 +178,11 @@ function Sidebar:DecorateRows()
             chevron:MoveToFront()
             addAccent(row.root, accentHeight)
         else
-            -- Category names start where the folder name does
-            row.label:SetPos(FOLDER_LABEL_LEFT, 0)
-            row.label:SetSize(-FOLDER_LABEL_LEFT - COUNT_WIDTH - 12, ROW_HEIGHT, 1.0, 0)
+            -- Folder members have the same icon and text indent as Bank Tags
+            local labelLeft = FOLDER_LABEL_LEFT + ICON_SIZE + ICON_GAP
+            addRowIcon(row, entry.objectID, FOLDER_LABEL_LEFT)
+            row.label:SetPos(labelLeft, 0)
+            row.label:SetSize(-labelLeft - COUNT_WIDTH - 12, ROW_HEIGHT, 1.0, 0)
             local count = ui.Text.new(row.root)
             count:SetPos(-COUNT_WIDTH - 8, 0, 1.0, 0)
             count:SetSize(COUNT_WIDTH, ROW_HEIGHT)

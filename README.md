@@ -25,6 +25,7 @@ Click the selected category again to return to the normal bank view. A category 
 | Archaeology | Damaged artefacts for workbench storage and materials for material storage |
 
 Click a folder to collapse or expand it. The plugin remembers your collapsed folders.
+Folder and category icons use the same item images, spacing and indentation as Bank Tags.
 
 ## Read reclaimable results carefully
 
