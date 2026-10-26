@@ -26,7 +26,7 @@ local app = h:App()
 local Sidebar = h.cleaner.env.package.loaded["bankcleaner/cleanup/sidebar"]
 assert(app:IsConnected())
 local session, layout = h:OpenBank()
-local service = session.extensionPages
+local service = session.pluginPages
 
 -- Count what Bank Cleaner sends Bank Core
 local updates, tabUpdates, redraws = {}, 0, 0
@@ -73,7 +73,7 @@ local function shown()
     for _, heading in ipairs(layout.pageState:GetLayoutSections()) do
         entries[#entries + 1] = { y = heading.y, x = -1, text = "[" .. heading.label .. "]" }
     end
-    for _, entry in ipairs(layout:VisibleMirrorEntries()) do
+    for _, entry in ipairs(layout:BuildPageItems()) do
         entries[#entries + 1] = { y = entry.y, x = entry.x,
             text = string.gsub(entry.layoutKey, "^object:", "") .. (entry.placeholder and "?" or "") }
     end
@@ -248,7 +248,7 @@ h:Tick(8)
 assert(not app:IsBusy() and string.find(tabRows(), "Diango Reclaimable=120", 1, true), tabRows())
 openRow("diango")
 assert(app.shownCategory == "diango" and layout.pageState.view.key == "cleanup:diango")
-assert(layout.listEngine:SetScrollPosition(200) and layout.listEngine.scrollY == 200)
+assert(layout.pageDisplay:SetScrollPosition(200) and layout.pageDisplay.scrollY == 200)
 host:Rebuild(function(changed)
     table.remove(changed, 1)
     return changed
@@ -256,12 +256,12 @@ end)
 layout:HandleInventoryUpdate()
 h:Tick(4)
 assert(string.find(tabRows(), "Diango Reclaimable=119", 1, true), tabRows())
-assert(layout.pageState.view.key == "cleanup:diango" and layout.listEngine.scrollY == 200, layout.listEngine.scrollY)
+assert(layout.pageState.view.key == "cleanup:diango" and layout.pageDisplay.scrollY == 200, layout.pageDisplay.scrollY)
 
 -- Choosing another category changes the shown page's key, starting at the top
 openRow("metal_bank")
 assert(app.shownCategory == "metal_bank" and layout.pageState.view.key == "cleanup:metal_bank")
-assert(layout.listEngine.scrollY == 0 and shown() == "[Metal Bank] 2349:1", shown())
+assert(layout.pageDisplay.scrollY == 0 and shown() == "[Metal Bank] 2349:1", shown())
 assert(#app.handle:GetState().pages == 1)
 -- Choosing the shown category leaves the page, and choosing again opens it
 assert(app.sidebar.list:Click("metal_bank"))
@@ -269,7 +269,7 @@ h:Tick(2)
 assert(app.shownCategory == nil and layout.selection == nil and app.category == "metal_bank")
 openRow("diango")
 assert(app.shownCategory == "diango" and layout.pageState.view.key == "cleanup:diango")
-assert(layout.listEngine.scrollY == 0)
+assert(layout.pageDisplay.scrollY == 0)
 
 -- Closing the bank drops the snapshot until it is read again
 session.layout:Restore()

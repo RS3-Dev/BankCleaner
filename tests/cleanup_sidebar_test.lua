@@ -12,7 +12,7 @@ host:SetItems({ { IRON_BAR, 5, "Iron bar" }, { EGG, 3, "Egg" } })
 h:LoadCore()
 h:LoadCleaner()
 local session, layout = h:OpenBank()
-local service = session.extensionPages
+local service = session.pluginPages
 local tabUpdates = 0
 local updateTab = service.UpdateTab
 service.UpdateTab = function(...)
