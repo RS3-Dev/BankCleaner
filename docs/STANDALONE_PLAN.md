@@ -29,7 +29,7 @@ This records the plan agreed before implementation for making Bank Cleaner a sta
 - On each new generation every layout is rebuilt at once from the snapshot and the cache; only objects not yet classified are evaluated, 25 per logic tick. While new objects are being classified, the pages show the cached objects of the current generation, never an earlier generation's stacks; a withdrawn item leaves its page as soon as the new generation is read.
 - A generation that arrives during a scan replaces the scan's target; finished classifications are kept. When `GetBankItems` answers `building`, the last snapshot stays and the next notice is awaited; a closed bank drops the snapshot.
 - The cache is cleared whenever the Cleanup tab becomes active with the bank open, so quest progress is checked again, as the legacy plugin rescanned on switching to the tab.
-- A page is sent to Core with `UpdatePage` only when its layout changed, and the tab with `UpdateTab` only when a count changed. The scan listener runs only while the Cleanup tab is active or a Cleaner page is shown.
+- A shown page is drawn again with `CreatePage` only when its layout changed and it is still shown, and the tab with `UpdateTab` only when a count changed. The scan listener runs only while the Cleanup tab is active or a Cleaner page is shown.
 
 ## Lifecycle
 

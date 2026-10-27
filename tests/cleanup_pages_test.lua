@@ -13,7 +13,7 @@ local focus = Categories.Definition("focus_storage")
 local page = Pages.Page(metal, { { objectID = 102, copy = 1 }, { objectID = 102, copy = 3 } }, false)
 assert(page.title == "Metal Bank" and page.key == "cleanup:metal_bank" and page.heading == nil)
 -- Every category shares one page; its key names the category
-assert(Pages.PAGE_ID == "cleanup" and Pages.CategoryOf(page.key) == "metal_bank")
+assert(Pages.CategoryOf(page.key) == "metal_bank")
 assert(Pages.CategoryOf("cleanup:storm_barn") == "storm_barn" and Pages.CategoryOf("cleanup:missing") == nil)
 assert(Pages.CategoryOf("tag:metal_bank") == nil and Pages.CategoryOf(nil) == nil)
 for _, definition in ipairs(Categories.DEFINITIONS) do

@@ -19,7 +19,6 @@ host:SetItems({ { IRON_BAR, 5, "Iron bar" }, { BRONZE_BAR, 2, "Bronze bar" }, { 
 local core = h:LoadCore()
 -- Another tab sorts first, so the bank opens on it
 local other = assert(core.result.RegisterExtension("a.other", "Other"))
-assert(other:RegisterPage("eggs", { title = "Eggs", layout = { { slots = { EGG } } } }))
 assert(other:RegisterTab("main", { label = "Other", icon = "STAR", mount = { mount = function() end } }))
 h:LoadCleaner()
 local app = h:App()
@@ -28,12 +27,12 @@ assert(app:IsConnected())
 local session, layout = h:OpenBank()
 local service = session.pluginPages
 
--- Count what Bank Cleaner sends Bank Core
+-- Count the pages and tabs Bank Cleaner gives Bank Core
 local updates, tabUpdates, redraws = {}, 0, 0
-local updatePage, updateTab = service.UpdatePage, service.UpdateTab
-service.UpdatePage = function(pages, owner, pageID, page)
-    updates[#updates + 1] = pageID
-    return updatePage(pages, owner, pageID, page)
+local createPage, updateTab = service.CreatePage, service.UpdateTab
+service.CreatePage = function(pages, owner, page)
+    if owner.id == "bankcleaner" then updates[#updates + 1] = page.key end
+    return createPage(pages, owner, page)
 end
 service.UpdateTab = function(pages, owner, tabID, tab)
     tabUpdates = tabUpdates + 1
@@ -106,21 +105,20 @@ assert(tabRows() == table.concat({ "#Review (3)", "Quest Items=0", "Storage Ches
     "Storm Barn=0", "#Player-owned house (7)", "Treasure Chest=0", "Armour Case=0", "Magic Wardrobe=0",
     "Cape Store=0", "Toy Box=0", "Fancy Dress Box=0", "Bookcase=0", "#Archaeology (2)",
     "Archaeologist's Workbench=0", "Material Storage=0" }, " "), tabRows())
--- Eighteen categories share one registered page, under Core's page limit
-assert(#app.handle:GetState().pages == 1 and app.handle:GetState().pages[1] == "cleanup")
+-- Choosing the tab and scanning show no page
+assert(not app.handle:GetState().pageVisible and layout.shownPage == nil and takeUpdates() == "0/0")
 
 -- Metal Bank: a label row, then present stacks in bank order
 openRow("metal_bank")
-assert(layout.pageState.view.key == "cleanup:metal_bank" and app.category == "metal_bank")
+assert(layout.shownPage.key == "cleanup:metal_bank" and app.category == "metal_bank")
 assert(shown() == "[Metal Bank] 2351:1 2349:1 2351:2", shown())
-local registered = service.pages["__bankutils_ext:bankcleaner/cleanup"]
-assert(registered.heading == nil and registered.title == "Metal Bank")
+assert(layout.shownPage.heading == nil and layout.shownPage.title == "Metal Bank")
 
--- Focus Storage: sections in definition order, on the same page with a new key
+-- Focus Storage: sections in definition order, shown with a new key
 openRow("focus_storage")
 assert(shown() == "[Focus: Recommended] 55623:1 [Focus: Optional] 25835:1", shown())
-assert(layout.pageState.view.key == "cleanup:focus_storage")
-assert(service.pages["__bankutils_ext:bankcleaner/cleanup"].title == "Focus Storage")
+assert(layout.shownPage.key == "cleanup:focus_storage")
+assert(layout.shownPage.title == "Focus Storage")
 
 -- Quest Items: the quest is unfinished, so the page is empty
 openRow("quest_items")
@@ -148,7 +146,7 @@ assert(not app.scanning and app.categories.snapshot.generation == layout.itemsGe
 assert(shown() == "[Metal Bank] 2349:1 2351:1", shown())
 assert(takeUpdates() == "1/0" and string.find(tabRows(), "Metal Bank=2", 1, true))
 -- The page key is unchanged, so the scroll position stays
-assert(layout.pageState.view.key == "cleanup:metal_bank")
+assert(layout.shownPage.key == "cleanup:metal_bank")
 
 -- A new object shows busy counts until the batch finishes
 -- Known members show at once, then the page and tab are resent
@@ -247,7 +245,7 @@ layout:HandleInventoryUpdate()
 h:Tick(8)
 assert(not app:IsBusy() and string.find(tabRows(), "Diango Reclaimable=120", 1, true), tabRows())
 openRow("diango")
-assert(app.shownCategory == "diango" and layout.pageState.view.key == "cleanup:diango")
+assert(app.shownCategory == "diango" and layout.shownPage.key == "cleanup:diango")
 assert(layout.pageDisplay:SetScrollPosition(200) and layout.pageDisplay.scrollY == 200)
 host:Rebuild(function(changed)
     table.remove(changed, 1)
@@ -256,26 +254,68 @@ end)
 layout:HandleInventoryUpdate()
 h:Tick(4)
 assert(string.find(tabRows(), "Diango Reclaimable=119", 1, true), tabRows())
-assert(layout.pageState.view.key == "cleanup:diango" and layout.pageDisplay.scrollY == 200, layout.pageDisplay.scrollY)
+assert(layout.shownPage.key == "cleanup:diango" and layout.pageDisplay.scrollY == 200, layout.pageDisplay.scrollY)
 
 -- Choosing another category changes the shown page's key, starting at the top
 openRow("metal_bank")
-assert(app.shownCategory == "metal_bank" and layout.pageState.view.key == "cleanup:metal_bank")
+assert(app.shownCategory == "metal_bank" and layout.shownPage.key == "cleanup:metal_bank")
 assert(layout.pageDisplay.scrollY == 0 and shown() == "[Metal Bank] 2349:1", shown())
-assert(#app.handle:GetState().pages == 1)
+assert(app.handle:GetState().pageKey == "cleanup:metal_bank")
 -- Choosing the shown category leaves the page, and choosing again opens it
 assert(app.sidebar.list:Click("metal_bank"))
 h:Tick(2)
-assert(app.shownCategory == nil and layout.selection == nil and app.category == "metal_bank")
+assert(app.shownCategory == nil and layout.shownPage == nil and app.category == "metal_bank")
 openRow("diango")
-assert(app.shownCategory == "diango" and layout.pageState.view.key == "cleanup:diango")
+assert(app.shownCategory == "diango" and layout.shownPage.key == "cleanup:diango")
 assert(layout.pageDisplay.scrollY == 0)
 
--- Closing the bank drops the snapshot until it is read again
+-- Another plugin's page replaces Bank Cleaner's; a scan that ends then shows nothing,
+-- and a row click shows the category again
+takeUpdates()
+host:Rebuild(function(changed)
+    changed[#changed + 1] = { 999990, 1 }
+    return changed
+end)
+layout:HandleInventoryUpdate()
+local waited = 0
+while not app.scanning and waited < 4 do
+    h:Tick()
+    waited = waited + 1
+end
+assert(app.scanning and takeUpdates() == "0/0")
+assert(other:CreatePage({ title = "Eggs", key = "eggs", layout = { { slots = { EGG } } } }))
+h:Tick(6)
+assert(not app.scanning and app.shownCategory == nil and app.tabActive)
+assert(layout.shownPage.title == "Eggs" and takeUpdates() == "0/0")
+openRow("diango")
+assert(app.shownCategory == "diango" and layout.shownPage.key == "cleanup:diango")
+assert(takeUpdates() == "1/0")
+-- After the player picks a native tab, a late scan result shows nothing
+host:Rebuild(function(changed)
+    changed[#changed + 1] = { 999991, 1 }
+    return changed
+end)
+layout:HandleInventoryUpdate()
+waited = 0
+while not app.scanning and waited < 4 do
+    h:Tick()
+    waited = waited + 1
+end
+assert(app.scanning)
+layout:SetNativeViewAll(false)
+h:Tick(6)
+assert(not app.scanning and layout.shownPage == nil and app.shownCategory == nil)
+assert(takeUpdates() == "0/0")
+layout:SetNativeViewAll(true)
+openRow("diango")
+assert(takeUpdates() == "1/0" and layout.shownPage.key == "cleanup:diango")
+
+-- Closing the bank drops the snapshot until it is read again, and shows nothing
+local lastShown = app.publishedPage
 session.layout:Restore()
 h:Tick(2)
 assert(not app.categories:HasSnapshot() and not app.scanning)
-assert(app.publishedPage == "cleanup:diango\nLScanning bank...", app.publishedPage)
+assert(app.publishedPage == lastShown and takeUpdates() == "0/0", app.publishedPage)
 
 h.host:Unload("bankcleaner")
 h.host:Unload("bankcore")

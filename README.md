@@ -46,7 +46,7 @@ Storm Barn lists checked farm animals, not unchecked or tutorial animals. Workbe
 
 The displayed page follows bank changes reported by Bank Core. Choosing Cleanup checks items and quest status again.
 
-- **No Cleanup tab:** check that Bank Core and PrettyUI are enabled.
+- **No Cleanup tab:** check that Bank Core and PrettyUI are enabled. If the client log says Bank Cleaner needs a newer Bank Core, update Bank Core.
 - **No matching items:** the category only shows held stacks; bank placeholders are excluded.
 - **Cannot open a category:** switch to the bank's All Items tab and try again.
 - **Unexpected reclaim match:** verify the item with the reclaim service and report the item's name and category. Do not discard it to test the plugin.

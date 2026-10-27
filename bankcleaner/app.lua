@@ -15,6 +15,9 @@ local SCAN_EVENT = "bankcleaner_scan"
 local FOLDERS_KEY = "bankcleaner_folders"
 -- Not-ready reasons that mean the bank is not open at all
 local CLOSED = { stale_api = true, not_ready = true, bank_closed = true }
+-- Reasons Bank Core gives for a page it cannot show, rather than for the bank's view
+local PAGE_REFUSALS = { invalid_page = true, unknown_item = true, duplicate_slot = true, too_large = true }
+local NEEDS_NEWER_CORE = "Bank Cleaner needs a newer Bank Core. Update Bank Core to review your bank."
 
 -- Find Bank Core's API, injected first, then published
 local function findBank()
@@ -52,10 +55,10 @@ function App.new()
         handle = nil,
         -- Whether the Cleanup tab is in view
         tabActive = false,
-        -- The category the shared page holds, and the one Bank Core reports shown
+        -- The category the player chose, and the one Bank Core reports shown
         category = Categories.DEFINITIONS[1].id,
         shownCategory = nil,
-        -- A summary of the shared page's last sent key and layout
+        -- A summary of the key and layout last shown
         publishedPage = nil,
         -- Tab folders, a summary of their counts, and collapsed folders
         folders = nil,
@@ -104,38 +107,40 @@ function App:IsBusy()
     return not self.categories:HasSnapshot() or self.categories:IsScanning()
 end
 
--- Send the shared page if it changed, or register everything
+-- Describe the chosen category's page and a summary of it
 -- An empty page says scanning only until the first scan ends
-function App:Publish(register)
-    local handle = self.handle
-    if handle == nil then return true end
-    local members, busy = self.categories:Members(), self:IsBusy()
-    local page = Pages.Page(Categories.Definition(self.category), members[self.category],
+function App:CategoryPage()
+    local page = Pages.Page(Categories.Definition(self.category), self.categories:Members()[self.category],
         not self.categories:HasScanned())
-    local signature = page.key .. "\n" .. Pages.Signature(page.layout)
-    if register or self.publishedPage ~= signature then
-        local ok
-        if register then
-            ok = handle:RegisterPage(Pages.PAGE_ID, page)
-        else
-            ok = handle:UpdatePage(Pages.PAGE_ID, page)
-        end
-        if not ok then return false end
-        self.publishedPage = signature
+    return page, page.key .. "\n" .. Pages.Signature(page.layout)
+end
+
+-- Show the chosen category's page in the bank, or explain why not
+function App:ShowCategory(ctx)
+    local page, signature = self:CategoryPage()
+    local shown, reason = ctx:CreatePage(page)
+    if shown then self.publishedPage = signature end
+    return shown, reason
+end
+
+-- Redraw the shown category if it changed, and the tab's folders if their counts did
+-- The page is drawn only while Bank Core still shows Bank Cleaner's page, so a scan never
+-- takes the bank from another plugin or the native view
+function App:Publish()
+    local handle = self.handle
+    if handle == nil then return end
+    if handle:GetState().pageVisible then
+        local page, signature = self:CategoryPage()
+        if self.publishedPage ~= signature and handle:CreatePage(page) then self.publishedPage = signature end
     end
-    local folders = Pages.Folders(members, busy)
+    local folders = Pages.Folders(self.categories:Members(), self:IsBusy())
     local signature = Pages.FoldersSignature(folders)
     local changed = self.foldersSignature ~= signature
     self.folders, self.foldersSignature = folders, signature
-    if register then
-        if not handle:RegisterTab(Pages.TAB_ID, Pages.Tab(self.mount)) then return false end
-    elseif changed then
-        self:RefreshSidebar()
-    end
-    return true
+    if changed then self:RefreshSidebar() end
 end
 
--- Register the pages, Cleanup tab, and listener
+-- Register the Cleanup tab and listener
 function App:Connect()
     if self.shutDown then return false, "stopped" end
     if self:IsConnected() then return true end
@@ -150,12 +155,20 @@ function App:Connect()
     if api == nil then return false, "unavailable" end
     local handle, reason = api.RegisterExtension(OWNER_ID, OWNER_LABEL)
     if handle == nil then return false, reason end
+    -- An older Bank Core shows pages another way, so it needs updating first
+    if type(handle.CreatePage) ~= "function" then
+        handle:Dispose()
+        log(NEEDS_NEWER_CORE)
+        return false, "bankcore_outdated"
+    end
     self.bank, self.handle = api, handle
-    local ok = self:Publish(true)
+    -- The tab's rows need the folders before it mounts
+    self:Publish()
+    local ok = handle:RegisterTab(Pages.TAB_ID, Pages.Tab(self.mount))
     if ok then
         ok = handle:SetListener({
             onState = function(state) self:OnState(state) end,
-            onPage = function(pageID, key) self:OnPage(pageID, key) end,
+            onPage = function(visible, key) self:OnPage(visible, key) end,
             onBankItems = function() self:OnBankItems() end,
         })
     end
@@ -191,7 +204,7 @@ function App:OnState(state)
         self.shownCategory = nil
         self:StopScan()
         self.categories:Clear()
-        self:Publish(false)
+        self:Publish()
         return
     end
     if activated then
@@ -202,9 +215,9 @@ function App:OnState(state)
 end
 
 -- Track the shown category from the page key, reading the bank on open
-function App:OnPage(pageID, key)
+function App:OnPage(visible, key)
     local watching, shown = self:IsWatching(), self.shownCategory
-    self.shownCategory = pageID == Pages.PAGE_ID and Pages.CategoryOf(key) or nil
+    self.shownCategory = visible and Pages.CategoryOf(key) or nil
     if not watching and self:IsWatching() then self:ReadBank() end
     if shown ~= self.shownCategory then self:RefreshSidebar() end
     self:Follow()
@@ -216,8 +229,7 @@ function App:RefreshSidebar()
     self.sidebar:SetEntries(Sidebar.Entries(self.folders, self.collapsed, self.shownCategory))
 end
 
--- Show a category on the shared page from its row, or leave it when shown
--- A shown page changes in place; otherwise the page opens
+-- Show a category's page from its row, or leave it when shown
 -- Rows are redrawn so a refused page leaves no selection
 function App:ChooseCategory(ctx, categoryID)
     if categoryID == self.shownCategory then
@@ -225,15 +237,13 @@ function App:ChooseCategory(ctx, categoryID)
     else
         local previous = self.category
         self.category = categoryID
-        if not self:Publish(false) then
+        local shown, reason = self:ShowCategory(ctx)
+        if not shown and PAGE_REFUSALS[reason] then
             self.category = previous
-        elseif self.shownCategory == nil then
-            local opened, reason = ctx:OpenPage(Pages.PAGE_ID)
-            if not opened and reason == "not_all_items" then
-                self.handle:ShowWarning('Select "All Items" to review these items.')
-            elseif not opened and reason == "preset_open" then
-                self.handle:ShowWarning('Close the preset selector to review these items.')
-            end
+        elseif not shown and reason == "not_all_items" then
+            self.handle:ShowWarning('Select "All Items" to review these items.')
+        elseif not shown and reason == "preset_open" then
+            self.handle:ShowWarning('Close the preset selector to review these items.')
         end
     end
     self:RefreshSidebar()
@@ -265,7 +275,7 @@ function App:ReadBank()
     elseif reason == "bank_closed" then
         self.categories:Clear()
     end
-    self:Publish(false)
+    self:Publish()
     self:Follow()
 end
 
@@ -289,7 +299,7 @@ function App:StartScan()
         end
         if not self.categories:Step(Categories.BATCH) then return end
         self:StopScan()
-        self:Publish(false)
+        self:Publish()
     end)
 end
 

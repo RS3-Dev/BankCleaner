@@ -105,7 +105,7 @@ assert(category.count.content == "1" and category.count.clickthrough)
 
 -- A folder click collapses it, saves, and keeps the page
 click("folder:Utility storage")
-assert(layout.selection == nil and app.shownCategory == nil)
+assert(layout.shownPage == nil and app.shownCategory == nil)
 assert(rowIcon(row("folder:Utility storage")).associatedObjectID == 40248)
 assert(rows() == "#Review (3) Quest Items=0 Storage Chest=0 Diango Reclaimable=0 #Utility storage (6) "
     .. "#Player-owned house (7) Treasure Chest=0 Armour Case=0 Magic Wardrobe=0 Cape Store=0 Toy Box=0 "
@@ -120,7 +120,7 @@ assert(#app.sidebar.list.rows == 22 and #h.databases.bankcleaner.bankcleaner_fol
 
 -- A category click opens and frames it; a second click leaves
 click("metal_bank")
-assert(app.shownCategory == "metal_bank" and layout.pageState.view.key == "cleanup:metal_bank")
+assert(app.shownCategory == "metal_bank" and layout.shownPage.key == "cleanup:metal_bank")
 assert(framed(row("metal_bank")) and not framed(row("folder:Utility storage")))
 -- Collapsing the shown category's folder moves the frame to it
 click("folder:Utility storage")
@@ -139,7 +139,7 @@ assert(not app:IsBusy() and tabUpdates == 0)
 click("folder:Utility storage")
 assert(row("metal_bank").count.content == "2" and framed(row("metal_bank")), rows())
 click("metal_bank")
-assert(app.shownCategory == nil and layout.selection == nil and not framed(row("metal_bank")))
+assert(app.shownCategory == nil and layout.shownPage == nil and not framed(row("metal_bank")))
 
 -- A refused page shows View All guidance and selects no row
 local warnings = 0
@@ -154,9 +154,9 @@ layout.nativeViewAll = true
 layout:StopWarning()
 -- Once View All allows it, the same row opens the shared page with its key
 click("spirits")
-assert(app.shownCategory == "spirits" and layout.pageState.view.key == "cleanup:spirits" and framed(row("spirits")))
+assert(app.shownCategory == "spirits" and layout.shownPage.key == "cleanup:spirits" and framed(row("spirits")))
 click("spirits")
-assert(app.shownCategory == nil and layout.selection == nil)
+assert(app.shownCategory == nil and layout.shownPage == nil)
 
 -- A taller bank refits the list once Core notices
 local list = app.sidebar.list

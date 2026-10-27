@@ -1,12 +1,11 @@
--- Build the Cleanup tab's folders and the one Bank Core page every category shares
+-- Build the Cleanup tab's folders and each category's Bank Core page
 
 local Categories = require("bankcleaner/cleanup/categories")
 
 local Pages = {}
 
 Pages.TAB_ID = "cleanup"
--- The one registered page; its key names the category it shows
-Pages.PAGE_ID = "cleanup"
+-- A page's key names the category it shows
 local KEY_PREFIX = "cleanup:"
 Pages.EMPTY = "None of these items are in your bank."
 Pages.SCANNING = "Scanning bank..."

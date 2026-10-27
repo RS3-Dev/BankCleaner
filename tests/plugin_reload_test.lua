@@ -31,7 +31,7 @@ end
 local core = h:LoadCore()
 assert(app:IsConnected() and app.bank == core.result)
 local state = app.handle:GetState()
-assert(#state.pages == 1 and state.pages[1] == "cleanup" and state.tabs[1] == "cleanup")
+assert(not state.pageVisible and state.tabs[1] == "cleanup")
 local _, layout = h:OpenBank()
 h:Tick(4)
 assert(app.tabActive and not app:IsBusy() and string.find(app.foldersSignature, "metal_bank=1", 1, true))
@@ -42,10 +42,10 @@ assert(next(h.databases.bankcleaner or {}) == nil)
 rawget(cleaner.env, "PluginDependencyUpdate")({ pluginIdentifier = "bankcore", enabled = false })
 assert(not app:IsConnected() and app.handle == nil)
 rawget(cleaner.env, "PluginDependencyUpdate")({ pluginIdentifier = "bankcore", enabled = true })
-assert(app:IsConnected() and #app.handle:GetState().pages == 1)
+assert(app:IsConnected() and app.handle:GetState().tabs[1] == "cleanup")
 
 -- A Core reload reconnects to the new API and scans again
--- The shown category is dropped; the shared page keeps the chosen category
+-- The shown category is dropped; the chosen one stays, and nothing is shown until a click
 h:OpenBank()
 h:Tick(4)
 assert(app.sidebar.list:Click("metal_bank"))
@@ -55,13 +55,13 @@ local oldAPI = core.result
 h.host:Reload("bankcore", { shutdown = true, notify = true, reinject = true })
 assert(not oldAPI.GetState().running and app:IsConnected() and app.bank == core.result)
 assert(app.shownCategory == nil and app.category == "metal_bank")
-assert(string.sub(app.publishedPage, 1, 19) == "cleanup:metal_bank\n", app.publishedPage)
+assert(app.publishedPage == nil and not app.handle:GetState().pageVisible)
 _, layout = h:OpenBank()
 h:Tick(4)
 assert(app.tabActive and string.find(app.foldersSignature, "metal_bank=1", 1, true))
 assert(app.sidebar.list:Click("metal_bank"))
 h:Tick(2)
-assert(app.shownCategory == "metal_bank" and layout.pageState.view.key == "cleanup:metal_bank")
+assert(app.shownCategory == "metal_bank" and layout.shownPage.key == "cleanup:metal_bank")
 
 -- A copied Core API still connects after a reload
 h.host:Reload("bankcore", { shutdown = true })
