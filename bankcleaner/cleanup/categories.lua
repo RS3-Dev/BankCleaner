@@ -250,7 +250,7 @@ local DEFINITIONS = {
     },
 }
 
--- The categories' group headings, in the order the tab shows them
+-- The categories' group headings, in the order the column shows them
 Categories.GROUPS = { "Review", "Utility storage", "Player-owned house", "Archaeology" }
 Categories.DEFINITIONS = DEFINITIONS
 -- Objects classified per logic tick
@@ -306,13 +306,13 @@ end
 
 -- Report whether a stack is in the bank rather than a placeholder
 local function present(item)
-    return (tonumber(item.quantity) or 0) > 0
+    return item.quantity > 0
 end
 
 -- List the snapshot's present objects not yet classified, in bank order
 local function unclassified(self)
     local pending, seen = {}, {}
-    for _, item in ipairs(self.snapshot ~= nil and self.snapshot.items or {}) do
+    for _, item in ipairs(self.snapshot or {}) do
         local objectID = item.objectID
         if present(item) and self.classes[objectID] == nil and not seen[objectID] then
             seen[objectID] = true
@@ -322,7 +322,7 @@ local function unclassified(self)
     return #pending > 0 and { objects = pending, index = 1 } or nil
 end
 
--- Use a new { generation, items } bank snapshot
+-- Use a new bank snapshot of { objectID, quantity } stacks
 -- Known objects count at once; the rest wait for Step
 function Categories:Observe(snapshot)
     self.snapshot = snapshot
@@ -380,17 +380,16 @@ function Categories:Step(limit)
     return true
 end
 
--- List each category's present classified stacks in bank order
--- Members are { objectID, copy, section }, keyed by category ID
+-- List each category's present classified stacks in bank order, an object once per stack
+-- Members are { objectID, section }, keyed by category ID
 function Categories:Members()
     local members = {}
     for _, definition in ipairs(DEFINITIONS) do members[definition.id] = {} end
-    for _, item in ipairs(self.snapshot ~= nil and self.snapshot.items or {}) do
+    for _, item in ipairs(self.snapshot or {}) do
         local classes = present(item) and self.classes[item.objectID] or nil
         for categoryID, section in pairs(classes or {}) do
             local list = members[categoryID]
-            list[#list + 1] = { objectID = item.objectID, copy = item.copy,
-                section = section ~= true and section or nil }
+            list[#list + 1] = { objectID = item.objectID, section = section ~= true and section or nil }
         end
     end
     return members

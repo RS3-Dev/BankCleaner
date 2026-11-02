@@ -1,12 +1,9 @@
--- Build the Cleanup tab's folders and each category's Bank Core page
+-- Build the Cleanup column's folders and each category's Bank Core page
 
 local Categories = require("bankcleaner/cleanup/categories")
 
 local Pages = {}
 
-Pages.TAB_ID = "cleanup"
--- A page's key names the category it shows
-local KEY_PREFIX = "cleanup:"
 Pages.EMPTY = "None of these items are in your bank."
 Pages.SCANNING = "Scanning bank..."
 -- The count shown beside a category while it may still change
@@ -14,29 +11,17 @@ Pages.BUSY = "..."
 -- The count column fits six characters
 local DETAIL_LIMIT = 999999
 
--- Name a category's page key; it stays the same so rescans keep scroll
-function Pages.Key(categoryID)
-    return KEY_PREFIX .. categoryID
-end
-
--- Find the category a page key names, or nil
-function Pages.CategoryOf(key)
-    if type(key) ~= "string" or string.sub(key, 1, #KEY_PREFIX) ~= KEY_PREFIX then return nil end
-    local definition = Categories.Definition(string.sub(key, #KEY_PREFIX + 1))
-    return definition ~= nil and definition.id or nil
-end
-
 -- List one row of slots for members
 local function slotRow(members)
     local slots = {}
-    for index, member in ipairs(members) do slots[index] = { item = member.objectID, copy = member.copy } end
+    for index, member in ipairs(members) do slots[index] = member.objectID end
     return { slots = slots }
 end
 
 -- Lay out a category page by section, or a status label if empty
-function Pages.Layout(definition, members, scanning)
+function Pages.Rows(definition, members, scanning)
     if #members == 0 then return { { label = scanning and Pages.SCANNING or Pages.EMPTY } } end
-    if definition.sections == nil then return { { label = definition.label }, slotRow(members) } end
+    if definition.sections == nil then return { slotRow(members) } end
     local rows = {}
     for _, section in ipairs(definition.sections) do
         local inSection = {}
@@ -51,28 +36,25 @@ function Pages.Layout(definition, members, scanning)
     return rows
 end
 
--- Describe a category's page for Bank Core
+-- Describe a category's page for Bank Core, titled with its label
 function Pages.Page(definition, members, scanning)
-    return { title = definition.label, key = Pages.Key(definition.id),
-        layout = Pages.Layout(definition, members, scanning) }
+    return { title = definition.label, rows = Pages.Rows(definition, members, scanning) }
 end
 
--- Summarise a layout so unchanged pages are not resent
-function Pages.Signature(layout)
-    local parts = {}
-    for _, row in ipairs(layout) do
+-- Summarise a page so an unchanged one is not resent
+function Pages.Signature(page)
+    local parts = { page.title }
+    for _, row in ipairs(page.rows) do
         if row.label ~= nil then
             parts[#parts + 1] = "L" .. row.label
         else
-            local slots = {}
-            for index, slot in ipairs(row.slots) do slots[index] = slot.item .. ":" .. slot.copy end
-            parts[#parts + 1] = "S" .. table.concat(slots, ",")
+            parts[#parts + 1] = "S" .. table.concat(row.slots, ",")
         end
     end
     return table.concat(parts, "\n")
 end
 
--- Describe the tab's folders with counts or a busy mark
+-- Describe the column's folders with counts or a busy mark
 function Pages.Folders(members, scanning)
     local folders = {}
     for _, group in ipairs(Categories.GROUPS) do
@@ -96,11 +78,6 @@ function Pages.FoldersSignature(folders)
         for _, category in ipairs(folder.categories) do parts[#parts + 1] = category.id .. "=" .. category.detail end
     end
     return table.concat(parts, " ")
-end
-
--- Describe the Cleanup tab drawn by the mount callbacks
-function Pages.Tab(mount)
-    return { label = "Cleanup", icon = "ERASER", tooltip = "Items that belong in other storage", mount = mount }
 end
 
 return Pages

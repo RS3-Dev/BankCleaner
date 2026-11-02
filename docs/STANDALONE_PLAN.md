@@ -42,6 +42,7 @@ This records the plan agreed before implementation for making Bank Cleaner a sta
 
 - The Cleanup sidebar's category search is dropped; 13 rows do not need it.
 - Later: the Cleanup tab became a mounted tab whose three groups are collapsible folders styled after Bank Tags' (`bankcleaner/cleanup/sidebar.lua`), with the collapsed set saved; counts redraw its rows in place rather than calling `UpdateTab`. `cleanup_sidebar_test` covers it.
+- Later: Bank Core's launch API replaced owners, tabs, listeners, keyed pages, and explicit copies. Bank Cleaner registers one rail icon with the Cleanup column, sets one `{ title, rows }` page of object IDs, and opens or closes it; [CONTRACT.md](../CONTRACT.md) describes it.
 - Pages show present stacks only and update with each bank change, rather than keeping stale members as ghosts until a rescan.
 - Category labels are Core's standard label rows; there is no custom page heading.
 

@@ -45,22 +45,18 @@ local CATALOGS = {
     materialStorageObjects = { [113] = true },
 }
 
--- Build a snapshot from { objectID, quantity } pairs
-local function snapshot(generation, specs)
-    local items, copies = {}, {}
-    for index, spec in ipairs(specs) do
-        local copy = (copies[spec[1]] or 0) + 1
-        copies[spec[1]] = copy
-        items[index] = { objectID = spec[1], copy = copy, quantity = spec[2], placeholder = spec[2] <= 0 }
-    end
-    return { generation = generation, items = items }
+-- Build a snapshot from { objectID, quantity } pairs, as GetBankItems returns it
+local function snapshot(specs)
+    local items = {}
+    for index, spec in ipairs(specs) do items[index] = { objectID = spec[1], quantity = spec[2] } end
+    return items
 end
 
--- Describe members as "object:copy", with sections
+-- Describe members as object IDs, with sections
 local function listed(members, categoryID)
     local parts = {}
     for index, member in ipairs(members[categoryID]) do
-        parts[index] = member.objectID .. ":" .. member.copy .. (member.section and ("/" .. member.section) or "")
+        parts[index] = member.objectID .. (member.section and ("/" .. member.section) or "")
     end
     return table.concat(parts, " ")
 end
@@ -94,7 +90,7 @@ assert(cleanup:Step() == true)
 assert(listed(cleanup:Members(), "quest_items") == "")
 
 -- 100's second stack is a placeholder; bank order decides members
-cleanup:Observe(snapshot(1, { { 100, 1 }, { 101, 1 }, { 103, 4 }, { 102, 1 }, { 100, 0 } }))
+cleanup:Observe(snapshot({ { 100, 1 }, { 101, 1 }, { 103, 4 }, { 102, 1 }, { 100, 0 } }))
 assert(cleanup:IsScanning() and not cleanup:HasScanned())
 -- Until classified, objects are in no category
 assert(listed(cleanup:Members(), "metal_bank") == "")
@@ -102,20 +98,20 @@ assert(cleanup:Step() == true and not cleanup:IsScanning() and cleanup:HasScanne
 local members = cleanup:Members()
 
 -- Quest items need every quest finished: 101 needs quest 2, which is not
-assert(listed(members, "quest_items") == "100:1 103:1", listed(members, "quest_items"))
-assert(listed(members, "metal_bank") == "102:1")
-assert(listed(members, "treasure_chest") == "101:1")
-assert(listed(members, "clue_carrier") == "103:1")
-assert(listed(members, "armour_case") == "102:1")
-assert(listed(members, "magic_wardrobe") == "100:1")
-assert(listed(members, "cape_store") == "101:1")
-assert(listed(members, "tool_leprechaun") == "102:1")
-assert(listed(members, "toy_box") == "103:1")
-assert(listed(members, "fancy_dress_box") == "100:1")
-assert(listed(members, "bookcase") == "101:1")
+assert(listed(members, "quest_items") == "100 103", listed(members, "quest_items"))
+assert(listed(members, "metal_bank") == "102")
+assert(listed(members, "treasure_chest") == "101")
+assert(listed(members, "clue_carrier") == "103")
+assert(listed(members, "armour_case") == "102")
+assert(listed(members, "magic_wardrobe") == "100")
+assert(listed(members, "cape_store") == "101")
+assert(listed(members, "tool_leprechaun") == "102")
+assert(listed(members, "toy_box") == "103")
+assert(listed(members, "fancy_dress_box") == "100")
+assert(listed(members, "bookcase") == "101")
 -- Members record sections; pages order them by definition
-assert(listed(members, "focus_storage") == "103:1/optional 102:1/recommended", listed(members, "focus_storage"))
-assert(listed(members, "spirits") == "100:1/stone 101:1/wood")
+assert(listed(members, "focus_storage") == "103/optional 102/recommended", listed(members, "focus_storage"))
+assert(listed(members, "spirits") == "100/stone 101/wood")
 local focus = Categories.Definition("focus_storage")
 assert(focus.sections[1].id == "recommended" and focus.sections[2].label == "Focus: Optional")
 assert(Categories.Definition("spirits").sections[1].label == "Stone Spirits (ore box)")
@@ -126,44 +122,45 @@ assert(chest.sections[1].id == "non_reclaimable" and chest.sections[2].id == "re
 -- Storage Chest: finished quest items the chest does not list are non-reclaimable
 -- Chest items need their own quests finished, or none when marked so; unfinished or unknown quests stay out
 local storage = Categories.new(CATALOGS)
-storage:Observe(snapshot(1, { { 100, 1 }, { 101, 1 }, { 103, 1 }, { 107, 2 }, { 108, 1 }, { 109, 1 }, { 114, 1 }, { 107, 0 } }))
+storage:Observe(snapshot({ { 100, 1 }, { 101, 1 }, { 103, 1 }, { 107, 2 }, { 108, 1 }, { 109, 1 }, { 114, 1 }, { 107, 0 } }))
 storage:Step()
 members = storage:Members()
-assert(listed(members, "storage_chest") == "100:1/non_reclaimable 103:1/reclaimable 107:1/reclaimable 114:1/reclaimable",
+assert(listed(members, "storage_chest") == "100/non_reclaimable 103/reclaimable 107/reclaimable 114/reclaimable",
     listed(members, "storage_chest"))
 -- Quest Items keeps its own rule: chest-only items are not quest items
-assert(listed(members, "quest_items") == "100:1 103:1", listed(members, "quest_items"))
+assert(listed(members, "quest_items") == "100 103", listed(members, "quest_items"))
 
 -- Sectioned catalogs give their section; others give none
-storage:Observe(snapshot(2, { { 110, 1 }, { 104, 3 }, { 111, 1 }, { 112, 1 }, { 113, 1 }, { 113, 0 } }))
+storage:Observe(snapshot({ { 110, 1 }, { 104, 3 }, { 111, 1 }, { 112, 1 }, { 113, 1 }, { 113, 0 } }))
 storage:Step()
 members = storage:Members()
-assert(listed(members, "diango") == "110:1/s01 104:1/s02", listed(members, "diango"))
-assert(listed(members, "storm_barn") == "111:1/anachronia")
-assert(listed(members, "workbench") == "112:1" and listed(members, "material_storage") == "113:1")
+assert(listed(members, "diango") == "110/s01 104/s02", listed(members, "diango"))
+assert(listed(members, "storm_barn") == "111/anachronia")
+assert(listed(members, "workbench") == "112" and listed(members, "material_storage") == "113")
 assert(listed(members, "metal_bank") == "" and listed(members, "storage_chest") == "")
 
 -- Known objects need no scan when the bank changes
 local reads = questReads
-cleanup:Observe(snapshot(2, { { 100, 1 }, { 103, 4 }, { 102, 0 }, { 103, 2 } }))
+cleanup:Observe(snapshot({ { 100, 1 }, { 103, 4 }, { 102, 0 }, { 103, 2 } }))
 assert(not cleanup:IsScanning() and questReads == reads)
 members = cleanup:Members()
 assert(listed(members, "metal_bank") == "")
-assert(listed(members, "quest_items") == "100:1 103:1 103:2")
-assert(listed(members, "toy_box") == "103:1 103:2")
+-- An object is listed once per present stack
+assert(listed(members, "quest_items") == "100 103 103")
+assert(listed(members, "toy_box") == "103 103")
 
 -- The quest rule leaves items out without quest data
 -- A later scan only adds new objects
-cleanup:Observe(snapshot(3, { { 105, 1 }, { 106, 1 } }))
+cleanup:Observe(snapshot({ { 105, 1 }, { 106, 1 } }))
 assert(cleanup:IsScanning() and cleanup:HasScanned())
 assert(cleanup:Step() == true)
 assert(listed(cleanup:Members(), "quest_items") == "")
 local saved = config
 config = nil
 local closed = Categories.new(CATALOGS)
-closed:Observe(snapshot(1, { { 100, 1 } }))
+closed:Observe(snapshot({ { 100, 1 } }))
 closed:Step()
-assert(listed(closed:Members(), "quest_items") == "" and listed(closed:Members(), "magic_wardrobe") == "100:1")
+assert(listed(closed:Members(), "quest_items") == "" and listed(closed:Members(), "magic_wardrobe") == "100")
 config = saved
 
 -- Only new objects are evaluated, at most a batch per step
@@ -177,31 +174,31 @@ local batched = Categories.new({ metalBankObjects = setmetatable({}, { __index =
 end }) })
 local specs = {}
 for objectID = 1000, 1059 do specs[#specs + 1] = { objectID, 1 } end
-batched:Observe(snapshot(1, specs))
+batched:Observe(snapshot(specs))
 assert(batched:Step(Categories.BATCH) == false and calls == 25)
 specs[#specs + 1] = { 1000, 3 }
-batched:Observe(snapshot(2, specs))
+batched:Observe(snapshot(specs))
 assert(batched:Step(Categories.BATCH) == false and calls == 50)
 assert(batched:Step(Categories.BATCH) == true and calls == 60)
-assert(listed(batched:Members(), "metal_bank") == "1001:1")
-batched:Observe(snapshot(3, specs))
+assert(listed(batched:Members(), "metal_bank") == "1001")
+batched:Observe(snapshot(specs))
 assert(not batched:IsScanning() and calls == 60)
 
 -- Forgetting reads every object and quest again
 quests[2].hasFinishedQuest = true
-cleanup:Observe(snapshot(4, { { 101, 1 }, { 100, 1 } }))
-assert(not cleanup:IsScanning() and listed(cleanup:Members(), "quest_items") == "100:1")
+cleanup:Observe(snapshot({ { 101, 1 }, { 100, 1 } }))
+assert(not cleanup:IsScanning() and listed(cleanup:Members(), "quest_items") == "100")
 cleanup:Forget()
 assert(cleanup:IsScanning() and not cleanup:HasScanned() and listed(cleanup:Members(), "quest_items") == "")
 cleanup:Step()
-assert(listed(cleanup:Members(), "quest_items") == "101:1 100:1")
+assert(listed(cleanup:Members(), "quest_items") == "101 100")
 
 -- Clearing drops the snapshot and its scan but keeps classifications
 cleanup:Clear()
 assert(not cleanup:HasSnapshot() and not cleanup:IsScanning() and not cleanup:HasScanned())
 assert(listed(cleanup:Members(), "quest_items") == "")
 -- A snapshot of objects already classified needs no scan at all
-cleanup:Observe(snapshot(5, { { 101, 1 } }))
-assert(not cleanup:IsScanning() and cleanup:HasScanned() and listed(cleanup:Members(), "quest_items") == "101:1")
+cleanup:Observe(snapshot({ { 101, 1 } }))
+assert(not cleanup:IsScanning() and cleanup:HasScanned() and listed(cleanup:Members(), "quest_items") == "101")
 
 print("cleanup_categories_test: ok")

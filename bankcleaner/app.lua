@@ -1,4 +1,4 @@
--- Show Bank Cleaner's pages and Cleanup tab through Bank Core's API
+-- Show Bank Cleaner's pages and Cleanup column through Bank Core's API
 
 local Categories = require("bankcleaner/cleanup/categories")
 local Pages = require("bankcleaner/cleanup/pages")
@@ -7,31 +7,13 @@ local Sidebar = require("bankcleaner/cleanup/sidebar")
 local App = {}
 App.__index = App
 
-local OWNER_ID = "bankcleaner"
-local OWNER_LABEL = "Bank Cleaner"
+local EXTENSION_ID = "bankcleaner"
+local EXTENSION_NAME = "Bank Cleaner"
+local ICON = "ERASER"
 local CORE_API_KEY = "__bankcore_api"
 local SCAN_EVENT = "bankcleaner_scan"
 -- Where the collapsed folders are saved: { collapsed = { group, ... } }
 local FOLDERS_KEY = "bankcleaner_folders"
--- Not-ready reasons that mean the bank is not open at all
-local CLOSED = { stale_api = true, not_ready = true, bank_closed = true }
--- Reasons Bank Core gives for a page it cannot show, rather than for the bank's view
-local PAGE_REFUSALS = { invalid_page = true, unknown_item = true, duplicate_slot = true, too_large = true }
-local NEEDS_NEWER_CORE = "Bank Cleaner needs a newer Bank Core. Update Bank Core to review your bank."
-
--- Find Bank Core's API, injected first, then published
-local function findBank()
-    -- Either may be nil, so loop by index instead of ipairs
-    local candidates = { bankcore, rawget(_G, CORE_API_KEY) }
-    for index = 1, 2 do
-        local candidate = candidates[index]
-        if type(candidate) == "table" and type(candidate.RegisterExtension) == "function"
-            and type(candidate.GetState) == "function" and candidate.GetState().running then
-            return candidate
-        end
-    end
-    return nil
-end
 
 -- Read which folders the player collapsed, keeping only groups that still exist
 local function loadCollapsed()
@@ -50,33 +32,31 @@ end
 function App.new()
     local self = setmetatable({
         categories = Categories.new(),
-        -- Bank Core's API and this plugin's owner handle
-        bank = nil,
-        handle = nil,
-        -- Whether the Cleanup tab is in view
-        tabActive = false,
-        -- The category the player chose, and the one Bank Core reports shown
+        -- This plugin's Bank Core extension
+        ext = nil,
+        -- The category the player chose, whose page was last set
         category = Categories.DEFINITIONS[1].id,
-        shownCategory = nil,
-        -- A summary of the key and layout last shown
+        -- A summary of the page last set
         publishedPage = nil,
-        -- Tab folders, a summary of their counts, and collapsed folders
+        -- Column folders, a summary of their counts, and collapsed folders
         folders = nil,
         foldersSignature = nil,
         collapsed = loadCollapsed(),
-        -- Mounted tab rows
+        -- Mounted column rows
         sidebar = nil,
         scanning = false,
-        retired = false,
         started = false,
         shutDown = false,
     }, App)
-    -- Kept for the app's life so mounted rows are never replaced
-    self.mount = {
+    -- The Cleanup column, given to Bank Core on each registration
+    self.column = {
         mount = function(ctx)
             self.sidebar = Sidebar.Mount(ctx, function(group) self:ToggleFolder(group) end,
-                function(categoryID) self:ChooseCategory(ctx, categoryID) end)
-            self:RefreshSidebar()
+                function(categoryID) self:ChooseCategory(categoryID) end)
+            -- Opening Cleanup rereads quest progress; the rows are drawn once the bank is read
+            self.categories:Forget()
+            self.foldersSignature = nil
+            self:ReadBank()
         end,
         resize = function()
             if self.sidebar ~= nil then self.sidebar:Resize() end
@@ -97,42 +77,33 @@ function App:Start()
     self:Connect()
 end
 
--- Report whether this plugin is registered with Bank Core
-function App:IsConnected()
-    return self.handle ~= nil and self.handle:GetState().live == true
-end
-
 -- Report whether counts may still change
 function App:IsBusy()
     return not self.categories:HasSnapshot() or self.categories:IsScanning()
 end
 
--- Describe the chosen category's page and a summary of it
+-- Find the category Bank Core shows, or nil
+function App:ShownCategory()
+    return self.ext ~= nil and self.ext:IsOpen() and self.category or nil
+end
+
+-- Give Bank Core the chosen category's page if it changed
+-- Core redraws it in place while it is shown, and otherwise keeps it until opened
 -- An empty page says scanning only until the first scan ends
-function App:CategoryPage()
+function App:SetPage()
     local page = Pages.Page(Categories.Definition(self.category), self.categories:Members()[self.category],
         not self.categories:HasScanned())
-    return page, page.key .. "\n" .. Pages.Signature(page.layout)
+    local signature = Pages.Signature(page)
+    if self.publishedPage == signature then return true end
+    local ok = self.ext:SetPage(page)
+    if ok then self.publishedPage = signature end
+    return ok
 end
 
--- Show the chosen category's page in the bank, or explain why not
-function App:ShowCategory(ctx)
-    local page, signature = self:CategoryPage()
-    local shown, reason = ctx:CreatePage(page)
-    if shown then self.publishedPage = signature end
-    return shown, reason
-end
-
--- Redraw the shown category if it changed, and the tab's folders if their counts did
--- The page is drawn only while Bank Core still shows Bank Cleaner's page, so a scan never
--- takes the bank from another plugin or the native view
+-- Set the chosen category's page, and redraw the folders if their counts changed
 function App:Publish()
-    local handle = self.handle
-    if handle == nil then return end
-    if handle:GetState().pageVisible then
-        local page, signature = self:CategoryPage()
-        if self.publishedPage ~= signature and handle:CreatePage(page) then self.publishedPage = signature end
-    end
+    if self.ext == nil then return end
+    self:SetPage()
     local folders = Pages.Folders(self.categories:Members(), self:IsBusy())
     local signature = Pages.FoldersSignature(folders)
     local changed = self.foldersSignature ~= signature
@@ -140,111 +111,59 @@ function App:Publish()
     if changed then self:RefreshSidebar() end
 end
 
--- Register the Cleanup tab and listener
+-- Register the Cleanup icon, column, and callbacks, replacing an earlier registration
 function App:Connect()
     if self.shutDown then return false, "stopped" end
-    if self:IsConnected() then return true end
-    -- A newer Bank Cleaner load owns the ID now, so leave it
-    if self.handle ~= nil and self.bank.GetState().running then
-        self.handle, self.bank, self.retired = nil, nil, true
-        self:Disconnect()
-    end
-    if self.retired then return false, "replaced" end
     self:Disconnect()
-    local api = findBank()
+    local api = bankcore or rawget(_G, CORE_API_KEY)
     if api == nil then return false, "unavailable" end
-    local handle, reason = api.RegisterExtension(OWNER_ID, OWNER_LABEL)
-    if handle == nil then return false, reason end
-    -- An older Bank Core shows pages another way, so it needs updating first
-    if type(handle.CreatePage) ~= "function" then
-        handle:Dispose()
-        log(NEEDS_NEWER_CORE)
-        return false, "bankcore_outdated"
-    end
-    self.bank, self.handle = api, handle
-    -- The tab's rows need the folders before it mounts
+    local ext, reason = api.Register({
+        id = EXTENSION_ID,
+        name = EXTENSION_NAME,
+        icon = ICON,
+        column = self.column,
+        onClose = function() self:RefreshSidebar() end,
+        onBankItems = function() self:OnBankItems() end,
+        onBankClose = function() self:OnBankClose() end,
+    })
+    if ext == nil then return false, reason end
+    self.ext = ext
     self:Publish()
-    local ok = handle:RegisterTab(Pages.TAB_ID, Pages.Tab(self.mount))
-    if ok then
-        ok = handle:SetListener({
-            onState = function(state) self:OnState(state) end,
-            onPage = function(visible, key) self:OnPage(visible, key) end,
-            onBankItems = function() self:OnBankItems() end,
-        })
-    end
-    if not ok then
-        self:Disconnect()
-        return false, "refused"
-    end
     return true
 end
 
--- Drop the owner handle, the scan, and the last bank read
+-- Drop the extension, the scan, and the last bank read
 function App:Disconnect()
     self:StopScan()
-    local handle = self.handle
-    self.handle, self.bank = nil, nil
-    self.tabActive, self.shownCategory, self.publishedPage, self.foldersSignature = false, nil, nil, nil
+    local ext = self.ext
+    self.ext = nil
+    self.publishedPage, self.foldersSignature = nil, nil
     self.categories:Clear()
-    if handle ~= nil then pcall(function() handle:Dispose() end) end
+    if ext ~= nil then ext:Dispose() end
 end
 
--- Report whether the Cleanup tab or a category is shown
+-- Report whether the Cleanup column or a category is shown
 function App:IsWatching()
-    return self.tabActive or self.shownCategory ~= nil
+    return self.sidebar ~= nil or self:ShownCategory() ~= nil
 end
 
--- Track the bank, rereading quest progress when Cleanup opens
-function App:OnState(state)
-    local open = state.running and not CLOSED[state.reason]
-    local tabActive = open and state.activeTab == Pages.TAB_ID
-    local activated = tabActive and not self.tabActive
-    self.tabActive = tabActive
-    if not open then
-        self.shownCategory = nil
-        self:StopScan()
-        self.categories:Clear()
-        self:Publish()
-        return
-    end
-    if activated then
-        self.categories:Forget()
-        self:ReadBank()
-    end
-    self:Follow()
-end
-
--- Track the shown category from the page key, reading the bank on open
-function App:OnPage(visible, key)
-    local watching, shown = self:IsWatching(), self.shownCategory
-    self.shownCategory = visible and Pages.CategoryOf(key) or nil
-    if not watching and self:IsWatching() then self:ReadBank() end
-    if shown ~= self.shownCategory then self:RefreshSidebar() end
-    self:Follow()
-end
-
--- Redraw the mounted tab's rows
+-- Redraw the mounted column's rows
 function App:RefreshSidebar()
     if self.sidebar == nil or self.folders == nil then return end
-    self.sidebar:SetEntries(Sidebar.Entries(self.folders, self.collapsed, self.shownCategory))
+    self.sidebar:SetEntries(Sidebar.Entries(self.folders, self.collapsed, self:ShownCategory()))
 end
 
--- Show a category's page from its row, or leave it when shown
--- Rows are redrawn so a refused page leaves no selection
-function App:ChooseCategory(ctx, categoryID)
-    if categoryID == self.shownCategory then
-        ctx:LeavePage()
+-- Show a category's page from its row, or close it when shown
+-- A refused page selects no row
+function App:ChooseCategory(categoryID)
+    local ext = self.ext
+    if ext == nil then return end
+    if categoryID == self:ShownCategory() then
+        ext:Close()
     else
         local previous = self.category
         self.category = categoryID
-        local shown, reason = self:ShowCategory(ctx)
-        if not shown and PAGE_REFUSALS[reason] then
-            self.category = previous
-        elseif not shown and reason == "not_all_items" then
-            self.handle:ShowWarning('Select "All Items" to review these items.')
-        elseif not shown and reason == "preset_open" then
-            self.handle:ShowWarning('Close the preset selector to review these items.')
-        end
+        if self:SetPage() then ext:Open() else self.category = previous end
     end
     self:RefreshSidebar()
 end
@@ -266,10 +185,17 @@ function App:OnBankItems()
     if self:IsWatching() then self:ReadBank() end
 end
 
--- Read and show the bank, keeping the last items while Core builds
+-- Drop the last bank read when the bank closes
+function App:OnBankClose()
+    self:StopScan()
+    self.categories:Clear()
+    self:Publish()
+end
+
+-- Read and show the bank, keeping the last items outside All Items or while Core is busy
 function App:ReadBank()
-    if self.handle == nil then return end
-    local snapshot, reason = self.handle:GetBankItems()
+    if self.ext == nil then return end
+    local snapshot, reason = self.ext:GetBankItems()
     if snapshot ~= nil then
         self.categories:Observe(snapshot)
     elseif reason == "bank_closed" then
@@ -281,7 +207,7 @@ end
 
 -- Keep scanning while items are left and the categories are in view
 function App:Follow()
-    if self.handle ~= nil and self:IsWatching() and self.categories:IsScanning() then
+    if self.ext ~= nil and self:IsWatching() and self.categories:IsScanning() then
         self:StartScan()
     else
         self:StopScan()
@@ -293,7 +219,7 @@ function App:StartScan()
     if self.scanning then return end
     self.scanning = true
     Event.Logic.Subscribe(SCAN_EVENT, function()
-        if self.handle == nil or not self:IsWatching() then
+        if self.ext == nil or not self:IsWatching() then
             self:StopScan()
             return
         end

@@ -1,6 +1,6 @@
 package.path = "./?.lua;./?/init.lua;" .. package.path
 
--- Drive the Cleanup tab's folders through the real Bank Core
+-- Drive the Cleanup column's folders through the real Bank Core
 -- FAKE HOST: stand-in loader, components, and widgets, not the game client
 
 local Harness = require("tools/test_support/cleaner_harness")
@@ -12,14 +12,7 @@ host:SetItems({ { IRON_BAR, 5, "Iron bar" }, { EGG, 3, "Egg" } })
 h:LoadCore()
 h:LoadCleaner()
 local session, layout = h:OpenBank()
-local service = session.pluginPages
-local tabUpdates = 0
-local updateTab = service.UpdateTab
-service.UpdateTab = function(...)
-    tabUpdates = tabUpdates + 1
-    return updateTab(...)
-end
-h:ChooseTab("bankcleaner", "cleanup")
+h:ChooseIcon("bankcleaner")
 h:Tick(4)
 local app = h:App()
 local Sidebar = h.cleaner.env.package.loaded["bankcleaner/cleanup/sidebar"]
@@ -105,7 +98,7 @@ assert(category.count.content == "1" and category.count.clickthrough)
 
 -- A folder click collapses it, saves, and keeps the page
 click("folder:Utility storage")
-assert(layout.shownPage == nil and app.shownCategory == nil)
+assert(layout.shownPage == nil and app:ShownCategory() == nil)
 assert(rowIcon(row("folder:Utility storage")).associatedObjectID == 40248)
 assert(rows() == "#Review (3) Quest Items=0 Storage Chest=0 Diango Reclaimable=0 #Utility storage (6) "
     .. "#Player-owned house (7) Treasure Chest=0 Armour Case=0 Magic Wardrobe=0 Cape Store=0 Toy Box=0 "
@@ -118,62 +111,61 @@ end
 click("folder:Utility storage")
 assert(#app.sidebar.list.rows == 22 and #h.databases.bankcleaner.bankcleaner_folders.collapsed == 0)
 
--- A category click opens and frames it; a second click leaves
+-- A category click opens and frames it; a second click closes it
 click("metal_bank")
-assert(app.shownCategory == "metal_bank" and layout.shownPage.key == "cleanup:metal_bank")
+assert(app:ShownCategory() == "metal_bank" and layout.shownPage.title == "Metal Bank")
 assert(framed(row("metal_bank")) and not framed(row("folder:Utility storage")))
 -- Collapsing the shown category's folder moves the frame to it
 click("folder:Utility storage")
-assert(app.shownCategory == "metal_bank" and framed(row("folder:Utility storage")), rows())
+assert(app:ShownCategory() == "metal_bank" and framed(row("folder:Utility storage")), rows())
 assert(not framed(row("folder:Review")))
 
--- Collapsed counts stay current without a tab update
-tabUpdates = 0
+-- Collapsed counts stay current
 host:Rebuild(function(specs)
     specs[#specs + 1] = { BRONZE_BAR, 2, "Bronze bar" }
     return specs
 end)
 layout:HandleInventoryUpdate()
 h:Tick(6)
-assert(not app:IsBusy() and tabUpdates == 0)
+assert(not app:IsBusy())
 click("folder:Utility storage")
 assert(row("metal_bank").count.content == "2" and framed(row("metal_bank")), rows())
 click("metal_bank")
-assert(app.shownCategory == nil and layout.shownPage == nil and not framed(row("metal_bank")))
+assert(app:ShownCategory() == nil and layout.shownPage == nil and not framed(row("metal_bank")))
 
--- A refused page shows View All guidance and selects no row
-local warnings = 0
-local warn = layout.ShowViewAllWarning
-layout.ShowViewAllWarning = function() warnings = warnings + 1 end
+-- A page refused outside View All or with the preset selector open selects no row
 layout.nativeViewAll = false
 click("spirits")
-assert(layout.warningPanel.children[3].content == 'Select "All Items" to review these items.')
-assert(app.shownCategory == nil and not framed(row("spirits")))
+assert(app:ShownCategory() == nil and layout.shownPage == nil and not framed(row("spirits")))
 for _, value in ipairs(app.sidebar.list.rows) do assert(not framed(value), value.entry.id) end
 layout.nativeViewAll = true
-layout:StopWarning()
--- Once View All allows it, the same row opens the shared page with its key
+local presetOpen = layout.IsPresetViewOpen
+layout.IsPresetViewOpen = function() return true end
 click("spirits")
-assert(app.shownCategory == "spirits" and layout.shownPage.key == "cleanup:spirits" and framed(row("spirits")))
+assert(app:ShownCategory() == nil and layout.shownPage == nil and not framed(row("spirits")))
+layout.IsPresetViewOpen = presetOpen
+-- Once View All allows it, the same row opens the page
 click("spirits")
-assert(app.shownCategory == nil and layout.shownPage == nil)
+assert(app:ShownCategory() == "spirits" and layout.shownPage.title == "Spirits" and framed(row("spirits")))
+click("spirits")
+assert(app:ShownCategory() == nil and layout.shownPage == nil)
 
 -- A taller bank refits the list once Core notices
 local list = app.sidebar.list
 local height = host.window.content.height + 60
 host.window.content:SetSize(host.window.content.width, height)
 h:Tick(12)
-assert(app.sidebar.list == list and list.root.height == app.sidebar.ctx:GetBounds().height - 16)
+assert(app.sidebar.list == list and list.root.height == app.sidebar.ctx.height - 16)
 assert(rowIcon(row("metal_bank")).associatedObjectID == 438)
 
 -- Closing the bank drops the rows; reopening keeps them collapsed
 click("folder:Player-owned house")
 local parent = app.sidebar.ctx.parent
-layout:Restore()
+session:CloseBank()
 h:Tick(2)
 assert(app.sidebar == nil and parent.destroyed)
 h:OpenBank()
-h:ChooseTab("bankcleaner", "cleanup")
+h:ChooseIcon("bankcleaner")
 h:Tick(4)
 assert(app.sidebar ~= nil and app.sidebar.list ~= list)
 assert(string.find(rows(), "#Player-owned house (7) #Archaeology (2)", 1, true) and #app.sidebar.list.rows == 15, rows())

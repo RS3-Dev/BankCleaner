@@ -7,6 +7,7 @@ local Harness = require("tools/test_support/cleaner_harness")
 
 local h = Harness.new("plugin_reload")
 local Loader = require("tools/test_support/fake_plugin_host")
+local TAB_ID = "__bankutils_ext_tab:bankcleaner"
 h.bankHost:SetItems({ { 2349, 3, "Bronze bar" }, { 1944, 1, "Egg" } })
 
 -- Bank Cleaner has no plugin window entry, so it has no ribbon icon or panel
@@ -14,10 +15,16 @@ local manifest = assert(io.open(h.cleanerFolder .. "/plugin.json", "rb"))
 assert(string.find(manifest:read("a"), '"hasRibbonIcon": false', 1, true))
 manifest:close()
 
+-- Report whether an extension is still registered
+-- Close does nothing while its page is not shown, and a replaced one answers stale
+local function live(ext)
+    return ext ~= nil and ext:Close() == true
+end
+
 -- Without Bank Core, nothing is published
 local cleaner = h:LoadCleaner()
 local app = h:App()
-assert(app ~= nil and not app:IsConnected() and cleaner.result == nil)
+assert(app ~= nil and app.ext == nil and cleaner.result == nil)
 assert(type(rawget(cleaner.env, "PluginDependencyUpdate")) == "function")
 for _, subscription in ipairs(h.host:SubscriptionsOf("bankcleaner")) do
     assert(string.sub(subscription, 1, 18) ~= "ContentLayerReady.", subscription .. " is a plugin panel")
@@ -29,20 +36,24 @@ end
 
 -- A late Core connects through the dependency update
 local core = h:LoadCore()
-assert(app:IsConnected() and app.bank == core.result)
-local state = app.handle:GetState()
-assert(not state.pageVisible and state.tabs[1] == "cleanup")
+assert(live(app.ext) and not app.ext:IsOpen())
+-- The rail entry appears on the next tick
+h:Tick()
+assert(h:Session().layout:FindSidebarTab(TAB_ID).label == "Bank Cleaner")
 local _, layout = h:OpenBank()
 h:Tick(4)
-assert(app.tabActive and not app:IsBusy() and string.find(app.foldersSignature, "metal_bank=1", 1, true))
+-- Its icon is the only one, so the bank opens on its column
+assert(app.sidebar ~= nil and not app:IsBusy() and string.find(app.foldersSignature, "metal_bank=1", 1, true))
 -- Opening the bank and the Cleanup tab saves nothing
 assert(next(h.databases.bankcleaner or {}) == nil)
 
--- Core reported unloaded and loaded again: release, then register
+-- Core reported unloaded and loaded again: dispose, then register
+local disposed = app.ext
 rawget(cleaner.env, "PluginDependencyUpdate")({ pluginIdentifier = "bankcore", enabled = false })
-assert(not app:IsConnected() and app.handle == nil)
+assert(app.ext == nil and not live(disposed) and h:Session().layout:FindSidebarTab(TAB_ID) == nil)
 rawget(cleaner.env, "PluginDependencyUpdate")({ pluginIdentifier = "bankcore", enabled = true })
-assert(app:IsConnected() and app.handle:GetState().tabs[1] == "cleanup")
+h:Tick()
+assert(live(app.ext) and h:Session().layout:FindSidebarTab(TAB_ID) ~= nil)
 
 -- A Core reload reconnects to the new API and scans again
 -- The shown category is dropped; the chosen one stays, and nothing is shown until a click
@@ -50,77 +61,73 @@ h:OpenBank()
 h:Tick(4)
 assert(app.sidebar.list:Click("metal_bank"))
 h:Tick(2)
-assert(app.shownCategory == "metal_bank")
-local oldAPI = core.result
+assert(app:ShownCategory() == "metal_bank")
+local oldExt = app.ext
 h.host:Reload("bankcore", { shutdown = true, notify = true, reinject = true })
-assert(not oldAPI.GetState().running and app:IsConnected() and app.bank == core.result)
-assert(app.shownCategory == nil and app.category == "metal_bank")
-assert(app.publishedPage == nil and not app.handle:GetState().pageVisible)
+assert(select(2, oldExt:Open()) == "stale" and live(app.ext) and app.ext ~= oldExt)
+assert(app:ShownCategory() == nil and app.category == "metal_bank")
 _, layout = h:OpenBank()
 h:Tick(4)
-assert(app.tabActive and string.find(app.foldersSignature, "metal_bank=1", 1, true))
+assert(app.sidebar ~= nil and string.find(app.foldersSignature, "metal_bank=1", 1, true))
 assert(app.sidebar.list:Click("metal_bank"))
 h:Tick(2)
-assert(app.shownCategory == "metal_bank" and layout.shownPage.key == "cleanup:metal_bank")
+assert(app:ShownCategory() == "metal_bank" and layout.shownPage.title == "Metal Bank")
 
 -- A copied Core API still connects after a reload
 h.host:Reload("bankcore", { shutdown = true })
 h.host.exports.bankcore = Loader.Clone(core.result)
 h.host:Notify("bankcore", true, true)
-assert(app:IsConnected() and app.bank == h.host.exports.bankcore and getmetatable(app.bank) == nil)
+assert(live(app.ext))
 
 -- Core unloading stops any scan
 h.host:Unload("bankcore")
-assert(not app:IsConnected() and not app.scanning)
+assert(app.ext == nil and not app.scanning)
 h:LoadCore()
-assert(app:IsConnected())
+assert(live(app.ext))
 h:OpenBank()
 h:Tick(4)
 
--- A same-state reload hands the owner ID to the new session
--- The old copy takes nothing back when told Core loaded
+-- A same-state reload shuts the old session down before the new one registers
+-- The old copy registers nothing when told Core loaded
 h.host:Reload("bankcleaner", { freshEnvironment = true })
 local reloaded = h:App()
-assert(reloaded ~= app and app.shutDown and reloaded:IsConnected())
+assert(reloaded ~= app and app.shutDown and live(reloaded.ext))
 rawget(cleaner.env, "PluginDependencyUpdate")({ pluginIdentifier = "bankcore", enabled = true })
-assert(reloaded:IsConnected() and not app:IsConnected())
+assert(live(reloaded.ext) and app.ext == nil)
 h:Tick(4)
-assert(reloaded.tabActive and string.find(reloaded.foldersSignature, "metal_bank=1", 1, true))
+assert(reloaded.sidebar ~= nil and string.find(reloaded.foldersSignature, "metal_bank=1", 1, true))
 
 -- A reload that keeps cached modules still runs fresh ones
 local cachedApp = h.cleaner.env.package.loaded["bankcleaner/app"]
 h.host:Reload("bankcleaner")
 local hot = h:App()
-assert(hot ~= reloaded and reloaded.shutDown and hot:IsConnected())
+assert(hot ~= reloaded and reloaded.shutDown and live(hot.ext))
 assert(h.cleaner.env.package.loaded["bankcleaner/app"] ~= cachedApp)
 
--- Unloading mid-scan leaves no tab, page, listener, or subscription
+-- Unloading mid-scan leaves no icon, page, callback, or subscription
 local many = {}
 for index = 1, 40 do many[index] = { 40000 + index, 1 } end
 h.bankHost:SetItems(many)
 h:Session().layout:HandleInventoryUpdate()
 h:Tick(2)
-assert(hot.scanning and h:Session().layout:FindSidebarTab("__bankutils_ext_tab:bankcleaner/cleanup") ~= nil)
+assert(hot.scanning and h:Session().layout:FindSidebarTab(TAB_ID) ~= nil)
 h.host:Unload("bankcleaner")
-assert(not hot:IsConnected() and not hot.scanning)
+assert(hot.ext == nil and not hot.scanning)
 for _, subscription in ipairs(h.host:SubscriptionsOf("bankcleaner")) do
     error("Bank Cleaner left " .. subscription .. " subscribed")
 end
-assert(h:Session().layout:FindSidebarTab("__bankutils_ext_tab:bankcleaner/cleanup") == nil)
+assert(h:Session().layout:FindSidebarTab(TAB_ID) == nil)
 h.host:Unload("bankcore")
 
--- In separate Lua states, a newer copy takes the owner ID
--- The older copy sees it was replaced and stays idle
+-- In separate Lua states, a newer copy's registration replaces the older one's
 local split = Harness.new("plugin_reload_split", { separateGlobals = true, cloneExports = true })
 split:LoadCore()
 local first = split:LoadCleaner()
 local firstApp = rawget(first.env, "__bankcleaner_session")
-assert(firstApp:IsConnected() and rawget(first.env._G, "__bankcore_api") == nil)
+assert(live(firstApp.ext) and rawget(first.env._G, "__bankcore_api") == nil)
 local second = split.host:Load("bankcleaner_copy", split.cleanerFolder,
     { name = "bankcleaner", dependencies = {}, optional = { bankcore = true } })
 local secondApp = rawget(second.env, "__bankcleaner_session")
-assert(secondApp:IsConnected() and not firstApp:IsConnected())
-rawget(first.env, "PluginDependencyUpdate")({ pluginIdentifier = "bankcore", enabled = true })
-assert(firstApp.retired and not firstApp:IsConnected() and secondApp:IsConnected())
+assert(live(secondApp.ext) and not live(firstApp.ext))
 
 print("plugin_reload_test: ok")

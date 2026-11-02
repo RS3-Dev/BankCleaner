@@ -30,13 +30,10 @@ function Harness.CoreRoot()
     if not exists(root .. "/main.lua") then
         error("Bank Core was not found at " .. root .. "; set BANKCORE_ROOT to a bank-utilities checkout", 0)
     end
-    local contract = readText(root .. "/HOST_CONTRACT.md") or ""
-    for _, needed in ipairs({ "PluginDependencyUpdate(event)", "the root is a plain table", "onBankItems",
-        "GetBankItems", "`{ label = text }` or `{ slots = list }`" }) do
-        if not string.find(contract, needed, 1, true) then
-            error("Bank Core at " .. root .. " lacks " .. needed .. " in its contract; set BANKCORE_ROOT "
-                .. "to a checkout with the extension API Bank Cleaner uses", 0)
-        end
+    local spec = readText(root .. "/docs/API.md") or ""
+    if not string.find(spec, "bankcore.Register(spec)", 1, true) then
+        error("Bank Core at " .. root .. " lacks the documented extension API; set BANKCORE_ROOT "
+            .. "to a checkout with the extension API Bank Cleaner uses", 0)
     end
     -- Bank Cleaner's tools come first, then Bank Core's
     if not string.find(package.path, root .. "/?.lua", 1, true) then
@@ -122,9 +119,9 @@ function Harness:OpenBank(width, height)
     return session, session.layout
 end
 
--- Choose a Core sidebar tab as the tab rail does
-function Harness:ChooseTab(ownerID, tabID)
-    self:Session().layout:SetSidebarMode("__bankutils_ext_tab:" .. ownerID .. "/" .. tabID)
+-- Click an extension's rail icon as the tab rail does
+function Harness:ChooseIcon(extensionID)
+    self:Session().layout:SetSidebarMode("__bankutils_ext_tab:" .. extensionID)
 end
 
 -- Run logic ticks

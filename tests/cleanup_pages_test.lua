@@ -1,6 +1,6 @@
 package.path = "./?.lua;" .. package.path
 
--- Encode categories as Bank Core pages and Cleanup tab rows
+-- Encode categories as Bank Core pages and Cleanup column rows
 
 local Categories = require("bankcleaner/cleanup/categories")
 local Pages = require("bankcleaner/cleanup/pages")
@@ -9,49 +9,45 @@ local Sidebar = require("bankcleaner/cleanup/sidebar")
 local metal = Categories.Definition("metal_bank")
 local focus = Categories.Definition("focus_storage")
 
--- A category without sections is a label and one row
-local page = Pages.Page(metal, { { objectID = 102, copy = 1 }, { objectID = 102, copy = 3 } }, false)
-assert(page.title == "Metal Bank" and page.key == "cleanup:metal_bank" and page.heading == nil)
--- Every category shares one page; its key names the category
-assert(Pages.CategoryOf(page.key) == "metal_bank")
-assert(Pages.CategoryOf("cleanup:storm_barn") == "storm_barn" and Pages.CategoryOf("cleanup:missing") == nil)
-assert(Pages.CategoryOf("tag:metal_bank") == nil and Pages.CategoryOf(nil) == nil)
-for _, definition in ipairs(Categories.DEFINITIONS) do
-    assert(Pages.CategoryOf(Pages.Key(definition.id)) == definition.id and #Pages.Key(definition.id) <= 128)
-    assert(#definition.label <= 80 and #definition.id <= 64)
+-- A category without sections is one row under its title, an object once per stack
+local page = Pages.Page(metal, { { objectID = 102 }, { objectID = 102 } }, false)
+assert(page.title == "Metal Bank" and page.key == nil and page.heading == nil)
+assert(Pages.Signature(page) == "Metal Bank\nS102,102", Pages.Signature(page))
+assert(#page.rows == 1 and page.rows[1].slots[2] == 102)
+for _, definition in ipairs(Categories.DEFINITIONS) do assert(#definition.label <= 80) end
+
+-- Describe a category's rows without its title
+local function rowsOf(definition, members, scanning)
+    return Pages.Signature({ title = "", rows = Pages.Rows(definition, members, scanning) })
 end
-assert(Pages.Signature(page.layout) == "LMetal Bank\nS102:1,102:3", Pages.Signature(page.layout))
-assert(page.layout[2].slots[2].item == 102 and page.layout[2].slots[2].copy == 3)
 
 -- Sections follow definition order; empty ones are left out
-local layout = Pages.Layout(focus, {
-    { objectID = 103, copy = 1, section = "optional" },
-    { objectID = 102, copy = 1, section = "recommended" },
-    { objectID = 104, copy = 2, section = "optional" },
+local rows = rowsOf(focus, {
+    { objectID = 103, section = "optional" },
+    { objectID = 102, section = "recommended" },
+    { objectID = 104, section = "optional" },
 }, false)
-assert(Pages.Signature(layout) == "LFocus: Recommended\nS102:1\nLFocus: Optional\nS103:1,104:2", Pages.Signature(layout))
-layout = Pages.Layout(focus, { { objectID = 103, copy = 1, section = "optional" } }, false)
-assert(Pages.Signature(layout) == "LFocus: Optional\nS103:1")
+assert(rows == "\nLFocus: Recommended\nS102\nLFocus: Optional\nS103,104", rows)
+assert(rowsOf(focus, { { objectID = 103, section = "optional" } }, false) == "\nLFocus: Optional\nS103")
 
 -- Empty categories say so, or say the bank is being scanned
-assert(Pages.Signature(Pages.Layout(metal, {}, false)) == "L" .. Pages.EMPTY)
-assert(Pages.Signature(Pages.Layout(metal, {}, true)) == "L" .. Pages.SCANNING)
+assert(rowsOf(metal, {}, false) == "\nL" .. Pages.EMPTY)
+assert(rowsOf(metal, {}, true) == "\nL" .. Pages.SCANNING)
 -- Known members show while scanning
-assert(Pages.Signature(Pages.Layout(metal, { { objectID = 1, copy = 1 } }, true)) == "LMetal Bank\nS1:1")
+assert(rowsOf(metal, { { objectID = 1 } }, true) == "\nS1")
 
 -- A catalog's sections lay out in its order, each under its own label
 local diango = Categories.Definition("diango")
-layout = Pages.Layout(diango, {
-    { objectID = 5, copy = 1, section = diango.sections[3].id },
-    { objectID = 6, copy = 1, section = diango.sections[1].id },
+rows = rowsOf(diango, {
+    { objectID = 5, section = diango.sections[3].id },
+    { objectID = 6, section = diango.sections[1].id },
 }, false)
-assert(Pages.Signature(layout) == "L" .. diango.sections[1].label .. "\nS6:1\nL" .. diango.sections[3].label
-    .. "\nS5:1", Pages.Signature(layout))
+assert(rows == "\nL" .. diango.sections[1].label .. "\nS6\nL" .. diango.sections[3].label .. "\nS5", rows)
 
--- The tab shows the four groups in order, with counts
+-- The column shows the four groups in order, with counts
 local members = {}
 for _, definition in ipairs(Categories.DEFINITIONS) do members[definition.id] = {} end
-members.metal_bank = { { objectID = 102, copy = 1 }, { objectID = 102, copy = 2 } }
+members.metal_bank = { { objectID = 102 }, { objectID = 102 } }
 local folders = Pages.Folders(members, false)
 local order = {}
 for _, folder in ipairs(folders) do
@@ -72,10 +68,6 @@ assert(Pages.FoldersSignature(Pages.Folders(members, false)) == Pages.FoldersSig
 for _, folder in ipairs(folders) do
     for _, category in ipairs(folder.categories) do assert(#category.detail <= 6) end
 end
--- The tab is drawn by its mount callbacks
-local mount = { mount = function() end }
-local tab = Pages.Tab(mount)
-assert(tab.label == "Cleanup" and tab.icon == "ERASER" and tab.mount == mount and tab.rows == nil)
 
 -- Folders, then open folders' categories
 -- A collapsed folder holding the shown category gets the outline

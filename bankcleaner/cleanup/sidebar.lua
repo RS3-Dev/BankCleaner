@@ -1,4 +1,4 @@
--- Draw the Cleanup tab's folder and category rows
+-- Draw the Cleanup column's folder and category rows
 
 local Icons = require("bankcleaner/data/sidebar_icons")
 
@@ -68,7 +68,7 @@ function Sidebar.Entries(folders, collapsed, shownCategory)
     return entries
 end
 
--- Create the row list in a mounted tab's parent
+-- Create the row list in the mounted column's parent
 function Sidebar.Mount(ctx, onFolder, onCategory)
     local self = setmetatable({ ctx = ctx, entries = {}, entriesByID = {} }, Sidebar)
     local width, height = Sidebar.ListSize(ctx)
@@ -86,12 +86,10 @@ end
 
 -- Size the list to the mounted column
 function Sidebar.ListSize(ctx)
-    local bounds = ctx:GetBounds()
-    if type(bounds) ~= "table" then return 1, 1 end
-    return math.max(1, bounds.width - CONTENT_X * 2), math.max(1, bounds.height - LIST_TOP - LIST_BOTTOM)
+    return math.max(1, ctx.width - CONTENT_X * 2), math.max(1, ctx.height - LIST_TOP - LIST_BOTTOM)
 end
 
--- Fit the list to the column's new bounds
+-- Fit the list to the column's new size
 function Sidebar:Resize()
     self.list:SetSize(Sidebar.ListSize(self.ctx))
 end
