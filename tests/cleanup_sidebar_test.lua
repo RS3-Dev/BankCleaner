@@ -15,7 +15,7 @@ local session, layout = h:OpenBank()
 h:ChooseIcon("bankcleaner")
 h:Tick(4)
 local app = h:App()
-local Sidebar = h.cleaner.env.package.loaded["bankcleaner/cleanup/sidebar"]
+local Sidebar = h.cleaner.env.package.loaded["resources/bankcleaner/cleanup/sidebar"]
 
 -- Find a drawn row by its entry ID
 local function row(entryID)

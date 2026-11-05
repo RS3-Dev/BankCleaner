@@ -14,6 +14,27 @@ local CORE_API_KEY = "__bankcore_api"
 local SCAN_EVENT = "bankcleaner_scan"
 -- Where the collapsed folders are saved: { collapsed = { group, ... } }
 local FOLDERS_KEY = "bankcleaner_folders"
+local OPEN_REFUSALS = {
+    not_all_items = 'Select "All Items" to view cleanup items.',
+    preset_open = "Close the preset selector to view cleanup items.",
+    search_active = "Clear the bank search to view cleanup items.",
+    filter_active = "Clear the bank filter to view cleanup items.",
+    bank_closed = "Open your bank to view cleanup items.",
+    busy = "The bank is still updating. Try again.",
+}
+
+local function bankStateBlocker(state)
+    if state == nil then return "stale" end
+    if not state.bankOpen then return "bank_closed" end
+    if state.presetOpen then return "preset_open" end
+    if state.searchActive then return "search_active" end
+    if state.filterActive then return "filter_active" end
+    if not state.viewAll then return "not_all_items" end
+end
+
+local function refusal(reason)
+    return OPEN_REFUSALS[reason] or ("Cleanup items could not be shown (" .. tostring(reason) .. ").")
+end
 
 -- Read which folders the player collapsed, keeping only groups that still exist
 local function loadCollapsed()
@@ -45,6 +66,8 @@ function App.new()
         -- Mounted column rows
         sidebar = nil,
         search = "",
+        status = nil,
+        bankBlocked = nil,
         scanning = false,
         started = false,
         shutDown = false,
@@ -59,6 +82,7 @@ function App.new()
                     self.search = tostring(content or "")
                     self:Publish()
                 end)
+            self.sidebar:SetStatus(self.status)
             -- Opening Cleanup rereads quest progress; the rows are drawn once the bank is read
             self.categories:Forget()
             self.foldersSignature = nil
@@ -102,9 +126,9 @@ function App:SetPage(members)
         not self.categories:HasScanned(), self.search:match("%S") ~= nil)
     local signature = Pages.Signature(page)
     if self.publishedPage == signature then return true end
-    local ok = self.ext:SetPage(page)
+    local ok, reason = self.ext:SetPage(page)
     if ok then self.publishedPage = signature end
-    return ok
+    return ok, reason
 end
 
 -- Set the chosen category's page, and redraw the folders if their counts changed
@@ -133,9 +157,11 @@ function App:Connect()
         onClose = function() self:RefreshSidebar() end,
         onBankItems = function() self:OnBankItems() end,
         onBankClose = function() self:OnBankClose() end,
+        onBankStateChanged = function(state) self:OnBankStateChanged(state) end,
     })
     if ext == nil then return false, reason end
     self.ext = ext
+    self:OnBankStateChanged(ext:GetBankState())
     self:Publish()
     return true
 end
@@ -145,6 +171,7 @@ function App:Disconnect()
     self:StopScan()
     local ext = self.ext
     self.ext = nil
+    self.bankBlocked, self.status = nil, nil
     self.publishedPage, self.foldersSignature = nil, nil
     self.categories:Clear()
     if ext ~= nil then ext:Dispose() end
@@ -161,17 +188,53 @@ function App:RefreshSidebar()
     self.sidebar:SetEntries(Sidebar.Entries(self.folders, self.collapsed, self:ShownCategory()))
 end
 
+-- Show a notice over the bank title without rebuilding the column.
+function App:ShowStatus(text)
+    self.status = text
+    if self.sidebar ~= nil then self.sidebar:SetStatus(text) end
+end
+
+-- Drop our page when native controls restrict the bank; recovery waits for a click.
+function App:OnBankStateChanged(state)
+    if self.ext == nil then return "stale" end
+    local previous = self.bankBlocked
+    local blocked = bankStateBlocker(state)
+    self.bankBlocked = blocked
+    if blocked ~= nil then
+        self:StopScan()
+        if self.ext:IsOpen() then self.ext:Close() end
+        self:ShowStatus(refusal(blocked))
+        self:RefreshSidebar()
+    elseif previous ~= nil then
+        self:ShowStatus(nil)
+        if self:IsWatching() then self:ReadBank() end
+    end
+    return blocked
+end
+
 -- Show a category's page from its row, or close it when shown
 -- A refused page selects no row
 function App:ChooseCategory(categoryID)
     local ext = self.ext
     if ext == nil then return end
+    local blocked = self:OnBankStateChanged(ext:GetBankState())
+    if blocked ~= nil then return false end
     if categoryID == self:ShownCategory() then
         ext:Close()
+        self:ShowStatus(nil)
     else
         local previous = self.category
         self.category = categoryID
-        if self:SetPage() then ext:Open() else self.category = previous end
+        local shown, reason = self:SetPage()
+        if shown then
+            shown, reason = ext:Open()
+        else
+            self.category = previous
+        end
+        if not shown and ext:IsOpen() then ext:Close() end
+        self:ShowStatus(not shown and refusal(reason) or nil)
+        self:RefreshSidebar()
+        return shown
     end
     self:RefreshSidebar()
 end
@@ -203,6 +266,7 @@ end
 -- Read and show the bank, keeping the last items outside All Items or while Core is busy
 function App:ReadBank()
     if self.ext == nil then return end
+    if self:OnBankStateChanged(self.ext:GetBankState()) ~= nil then return end
     local snapshot, reason = self.ext:GetBankItems()
     if snapshot ~= nil then
         self.categories:Observe(snapshot)
@@ -215,7 +279,7 @@ end
 
 -- Keep scanning while items are left and the categories are in view
 function App:Follow()
-    if self.ext ~= nil and self:IsWatching() and self.categories:IsScanning() then
+    if self.ext ~= nil and self.bankBlocked == nil and self:IsWatching() and self.categories:IsScanning() then
         self:StartScan()
     else
         self:StopScan()

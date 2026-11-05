@@ -22,7 +22,7 @@ local other = assert(core.result.Register({ id = "a.other", name = "Other", icon
     column = { mount = function() end } }))
 h:LoadCleaner()
 local app = h:App()
-local Sidebar = h.cleaner.env.package.loaded["bankcleaner/cleanup/sidebar"]
+local Sidebar = h.cleaner.env.package.loaded["resources/bankcleaner/cleanup/sidebar"]
 assert(app.ext ~= nil)
 local session, layout = h:OpenBank()
 local service = session.pluginPages
@@ -245,7 +245,7 @@ openRow("quest_items")
 assert(shown() == "[Quest Items] 271=1", shown())
 
 -- A tall category keeps its scroll while it is rescanned
-local Diango = h.cleaner.env.package.loaded["bankcleaner/data/diango_objects"]
+local Diango = h.cleaner.env.package.loaded["resources/bankcleaner/data/diango_objects"]
 local tall = {}
 for objectID in pairs(Diango.objects) do tall[#tall + 1] = objectID end
 table.sort(tall)

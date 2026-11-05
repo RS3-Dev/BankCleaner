@@ -31,9 +31,12 @@ function Harness.CoreRoot()
         error("Bank Core was not found at " .. root .. "; set BANKCORE_ROOT to a bank-utilities checkout", 0)
     end
     local spec = readText(root .. "/docs/API.md") or ""
-    if not string.find(spec, "bankcore.Register(spec)", 1, true) then
-        error("Bank Core at " .. root .. " lacks the documented extension API; set BANKCORE_ROOT "
-            .. "to a checkout with the extension API Bank Cleaner uses", 0)
+    for _, needed in ipairs({ "bankcore.Register(spec)", "ext:GetBankState()",
+        "onBankStateChanged(state)", "`filterActive`" }) do
+        if not string.find(spec, needed, 1, true) then
+            error("Bank Core at " .. root .. " lacks " .. needed .. "; set BANKCORE_ROOT "
+                .. "to a Core 1.5.0 or later checkout", 0)
+        end
     end
     -- Bank Cleaner's tools come first, then Bank Core's
     if not string.find(package.path, root .. "/?.lua", 1, true) then

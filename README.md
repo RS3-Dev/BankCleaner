@@ -4,7 +4,7 @@ Bank Cleaner helps you find bank items that may belong in other storage, or that
 
 ## Before you start
 
-Enable **PrettyUI**, **Bank Core**, and **Bank Cleaner** in the client's plugin manager. Open a bank, then click the eraser icon (**Bank Cleaner**) on the left rail to show the Cleanup folders. There is no separate ribbon panel.
+Enable **PrettyUI**, **Bank Core 1.5.0 or later**, and **Bank Cleaner** in the client's plugin manager. Open a bank, then click the eraser icon (**Bank Cleaner**) on the left rail to show the Cleanup folders. There is no separate ribbon panel.
 
 ## Find items to move
 
@@ -50,7 +50,7 @@ The displayed page follows bank changes reported by Bank Core. Choosing the eras
 
 - **No eraser icon:** check that Bank Core and PrettyUI are enabled.
 - **No matching items:** the category only shows held stacks; bank placeholders are excluded.
-- **Cannot open a category:** close the preset selector, switch to the bank's All Items tab, and try again.
+- **Page closes or a category cannot open:** follow the message above the bank: close the preset selector, clear the bank's search or filter, or select All Items. Then choose the category again. Cleaner's own search field remains available.
 - **Unexpected reclaim match:** verify the item with the reclaim service and report the item's name and category. Do not discard it to test the plugin.
 
 Disable the older integrated `bankutils` or `bankutilities` plugin if you still have one installed.

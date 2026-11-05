@@ -88,7 +88,29 @@ function Sidebar.Mount(ctx, onFolder, onCategory, onSearch)
             if group ~= nil then onFolder(group) else onCategory(entryID) end
         end,
     })
+    -- Match Bank Tags' notice over the bank title, outside the item page.
+    self.statusBanner = ui.Layer.new(ctx.overlay)
+    self.statusBanner:SetPos(80, 5)
+    self.statusBanner:SetSize(-160, 26, 1.0, 0)
+    self.statusBanner.clickthrough = true
+    local background = ui.Rectangle.new(self.statusBanner)
+    background:SetSize(0, 26, 1.0, 0)
+    background.fill, background.rgba, background.clickthrough = true, FOLDER_ROW_EVEN, true
+    self.statusText = ui.Text.new(self.statusBanner)
+    self.statusText:SetPos(8, 0)
+    self.statusText:SetSize(-16, 26, 1.0, 0)
+    self.statusText.font = id.Font.MUSEO_SANS_11PT_REGULAR
+    self.statusText.rgba = 0xE6A39AFF
+    self.statusText.isShadowed, self.statusText.clickthrough = true, true
+    self.statusText.maxLines = 2
+    self.statusText.alignHorizontal, self.statusText.alignVertical = ui.AlignMode.CENTRE, ui.AlignMode.CENTRE
+    self:SetStatus(nil)
     return self
+end
+
+function Sidebar:SetStatus(text)
+    self.statusBanner.hidden = text == nil
+    self.statusText.content = text or ""
 end
 
 -- Size the list to the mounted column
@@ -211,10 +233,11 @@ end
 
 -- Destroy the list; Bank Core destroys the parent after unmount
 function Sidebar:Destroy()
-    local list, search = self.list, self.search
-    self.list, self.search = nil, nil
+    local list, search, banner = self.list, self.search, self.statusBanner
+    self.list, self.search, self.statusBanner, self.statusText = nil, nil, nil, nil
     if list ~= nil then pcall(function() list:Destroy() end) end
     if search ~= nil then pcall(function() search:Destroy() end) end
+    if banner ~= nil then pcall(function() banner:Destroy() end) end
 end
 
 return Sidebar

@@ -11,6 +11,14 @@ Build.PLUGIN = { name = "bankcleaner", entry = "plugins/bankcleaner/main",
     manifest = "plugins/bankcleaner/plugin.json" }
 -- Entry line the build replaces with the module list
 Build.EVICTION_MARKER = "-- build: every module this plugin loads"
+-- Keep all supporting runtime files below resources in the installed plugin.
+local RESOURCE_PREFIX = "resources/"
+
+local function packageSource(bytes)
+    return (string.gsub(bytes, '(["\'])(bankcleaner/[%w_/]+)%1', function(quote, moduleName)
+        return quote .. RESOURCE_PREFIX .. moduleName .. quote
+    end))
+end
 -- Source directories an output may never sit in
 local SOURCE_DIRECTORIES = {
     bankcleaner = true, plugins = true, tools = true, tests = true, reference = true, docs = true,
@@ -99,7 +107,7 @@ function Build.Plan()
         { path = "plugin.json", source = plugin.manifest, manifest = true },
     }
     for _, moduleName in ipairs(ModuleGraph.PluginModules(plugin.entry)) do
-        files[#files + 1] = { path = moduleName .. ".lua", source = moduleName .. ".lua" }
+        files[#files + 1] = { path = RESOURCE_PREFIX .. moduleName .. ".lua", source = moduleName .. ".lua" }
     end
     table.sort(files, function(a, b) return a.path < b.path end)
     return files
@@ -196,6 +204,7 @@ function Build.Run(options)
     local files = Build.Plan()
     for _, file in ipairs(files) do
         file.bytes = file.entry and Build.Entry() or readFile(file.source)
+        if not file.manifest then file.bytes = packageSource(file.bytes) end
         -- No JSON reader ships, so check the manifest name by text
         if file.manifest and not string.find(file.bytes, '"name"%s*:%s*"' .. Build.PLUGIN.name .. '"') then
             error(file.source .. " does not name the " .. Build.PLUGIN.name .. " plugin", 0)

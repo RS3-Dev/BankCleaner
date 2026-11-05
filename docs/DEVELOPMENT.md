@@ -22,9 +22,11 @@ Everything here is checked against Bank Core's stand-in host only. Nothing in th
 ## Requirements and load order
 
 - **PrettyUI** is a required dependency.
-- **Bank Utilities Core** (`bankcore`) is a required dependency. The manifest uses the local development folder string `"bankcore"`; replace it with Core's numeric mod.io ID when published to support automatic installation.
+- **Bank Utilities Core 1.5.0 or later** (`bankcore`) is a required dependency for `GetBankState` and separate native search/filter state. The manifest uses the local development folder string `"bankcore"`; replace it with Core's numeric mod.io ID when published to support automatic installation.
 
 The host loads required dependencies before Bank Cleaner. Required dependency change notifications are not documented, so reload Bank Cleaner after reloading Bank Core. The defensive `PluginDependencyUpdate` handler remains for hosts that send those notifications. Reloading Bank Cleaner shuts down the previous copy in the same Lua state first; each registration replaces any earlier one of `bankcleaner`.
+
+Cleaner follows Core's native bank-state notifications and checks the current snapshot before reading items or opening a category. A closed bank, another native tab, an open preset selector, native search, or native filter stops scanning and closes Cleaner's page. A banner over the bank title explains how to recover; clearing the restriction refreshes visible counts but waits for a category click to reopen a page. Cleaner's search field does not trigger native search state.
 
 **Old installs.** The old integrated `bankutils` plugin (and the older `bankutilities`) also had a Cleanup tab. They are not expected to work against this Bank Core, whose private bridge they used was removed; disable them so the cleanup views are not loaded twice.
 
@@ -56,7 +58,7 @@ lua54 tools/build.lua
 lua54 tools/check.lua
 ```
 
-The build writes only `dist/release/bankcleaner/`: `main.lua`, `plugin.json`, and the modules the entry's require graph loads, with the entry's module eviction list generated from that graph. It refuses output paths inside the source tree and removes only what its previous build wrote. The check builds into `dist/check`, runs every test, compiles every built file, and fails on unexpected globals, a runtime source the entry never loads, or anything from `reference/`, `tests/`, or `tools/` in the package. Tests that load Bank Core read it from `BANKCORE_ROOT`, which must be set.
+The build writes only `dist/release/bankcleaner/`: `main.lua`, `plugin.json`, and a `resources/` directory containing every supporting runtime module. It rewrites the packaged module paths and generated module eviction list to `resources/bankcleaner/...`; source paths stay unchanged. Release ZIPs wrap these three entries in a single `bank cleaner/` directory. The builder refuses output paths inside the source tree and removes only what its previous build wrote. The check builds into `dist/check`, runs every test, compiles every built file, and fails on unexpected globals, a runtime source the entry never loads, or anything from `reference/`, `tests/`, or `tools/` in the package. Tests that load Bank Core read it from `BANKCORE_ROOT`, which must be set.
 
 To install, copy `dist/release/bankcleaner/` into the client's plugins folder as `bankcleaner`.
 

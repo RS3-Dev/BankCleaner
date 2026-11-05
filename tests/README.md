@@ -14,3 +14,5 @@ Tests that load Bank Core read it, unchanged, from the checkout `BANKCORE_ROOT` 
 The stand-in host is not the game client: these tests show Bank Cleaner's behavior against Bank Core's public API under that model, not how the live client draws, scrolls, or delivers input.
 
 The Cleaner harness adapts `requiredDependencies` for Core's older stand-in loader and rejects startup when a required export is missing. Reload tests cover required Core startup and reloading Cleaner after Core, plus an optional-Core fixture to exercise the defensive dependency-update handler.
+
+`bank_state_test.lua` uses Core 1.5.0's state snapshots and native control signals to check page removal, error banners, refusal before callback delivery, explicit reopening after recovery, other plugins' pages, and disposal. The harness refuses Core versions lacking this API.
