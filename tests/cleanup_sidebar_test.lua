@@ -53,10 +53,10 @@ end
 -- Every folder starts open, in group order, in Core's column
 assert(layout.tabMount ~= nil and app.sidebar ~= nil and app.sidebar.list.root.parent == app.sidebar.ctx.parent)
 assert(#app.sidebar.list.rows == 22)
-assert(string.find(rows(), "#Review (3) Quest Items=0 Storage Chest=0 Diango Reclaimable=0 "
-    .. "#Utility storage (6) Metal Bank=1 ", 1, true) == 1, rows())
-assert(string.find(rows(), "Storm Barn=0 #Player-owned house (7)", 1, true), rows())
-local archaeology = "#Archaeology (2) Archaeologist's Workbench=0 Material Storage=0"
+assert(string.find(rows(), "#Review (0) Quest Items=0 Storage Chest=0 Diango Reclaimable=0 "
+    .. "#Utility storage (1) Metal Bank=1 ", 1, true) == 1, rows())
+assert(string.find(rows(), "Storm Barn=0 #Player-owned house (0)", 1, true), rows())
+local archaeology = "#Archaeology (0) Archaeologist's Workbench=0 Material Storage=0"
 assert(string.sub(rows(), -#archaeology) == archaeology, rows())
 -- Icons and indents match Bank Tags, with counts kept at the right
 local folder, category = row("folder:Utility storage"), row("metal_bank")
@@ -100,9 +100,9 @@ assert(category.count.content == "1" and category.count.clickthrough)
 click("folder:Utility storage")
 assert(layout.shownPage == nil and app:ShownCategory() == nil)
 assert(rowIcon(row("folder:Utility storage")).associatedObjectID == 40248)
-assert(rows() == "#Review (3) Quest Items=0 Storage Chest=0 Diango Reclaimable=0 #Utility storage (6) "
-    .. "#Player-owned house (7) Treasure Chest=0 Armour Case=0 Magic Wardrobe=0 Cape Store=0 Toy Box=0 "
-    .. "Fancy Dress Box=0 Bookcase=0 #Archaeology (2) Archaeologist's Workbench=0 Material Storage=0", rows())
+assert(rows() == "#Review (0) Quest Items=0 Storage Chest=0 Diango Reclaimable=0 #Utility storage (1) "
+    .. "#Player-owned house (0) Treasure Chest=0 Armour Case=0 Magic Wardrobe=0 Cape Store=0 Toy Box=0 "
+    .. "Fancy Dress Box=0 Bookcase=0 #Archaeology (0) Archaeologist's Workbench=0 Material Storage=0", rows())
 local saved = h.databases.bankcleaner.bankcleaner_folders
 assert(#saved.collapsed == 1 and saved.collapsed[1] == "Utility storage")
 for _, child in ipairs(row("folder:Utility storage").root.children) do
@@ -128,6 +128,7 @@ end)
 layout:HandleInventoryUpdate()
 h:Tick(6)
 assert(not app:IsBusy())
+assert(row("folder:Utility storage").entry.label == "Utility storage (2)")
 click("folder:Utility storage")
 assert(row("metal_bank").count.content == "2" and framed(row("metal_bank")), rows())
 click("metal_bank")
@@ -146,16 +147,44 @@ assert(app:ShownCategory() == nil and layout.shownPage == nil and not framed(row
 layout.IsPresetViewOpen = presetOpen
 -- Once View All allows it, the same row opens the page
 click("spirits")
-assert(app:ShownCategory() == "spirits" and layout.shownPage.title == "Spirits" and framed(row("spirits")))
+assert(app:ShownCategory() == "spirits" and layout.shownPage.title == "" and framed(row("spirits")))
 click("spirits")
 assert(app:ShownCategory() == nil and layout.shownPage == nil)
+
+-- Typing filters page items, keeping folders and the field
+click("metal_bank")
+click("folder:Utility storage")
+local field = app.sidebar.search
+local function search(text)
+    field.root.content = text
+    field.root.hooks[ui.Hook.ONCONTENTCHANGED](field.root, "change", text)
+    h:Tick(2)
+end
+search("  IrOn  ")
+assert(#app.sidebar.list.rows == 16 and row("metal_bank") == nil)
+assert(app:ShownCategory() == "metal_bank" and app.collapsed["Utility storage"])
+assert(row("folder:Utility storage").entry.label == "Utility storage (1)")
+assert(#layout:BuildPageItems() == 1 and layout:BuildPageItems()[1].objectID == IRON_BAR)
+search("nonexistent")
+assert(#app.sidebar.list.rows == 16 and app:ShownCategory() == "metal_bank")
+assert(#layout:BuildPageItems() == 0)
+assert(layout.pageState:GetLayoutSections()[1].label == "No cleanup items match your search.")
+assert(row("folder:Utility storage").entry.label == "Utility storage (0)")
+search("")
+assert(row("metal_bank") == nil and framed(row("folder:Utility storage")))
+assert(row("folder:Utility storage").entry.label == "Utility storage (2)")
+assert(#layout:BuildPageItems() == 2 and app.sidebar.search == field)
+click("folder:Utility storage")
+click("metal_bank")
 
 -- A taller bank refits the list once Core notices
 local list = app.sidebar.list
 local height = host.window.content.height + 60
 host.window.content:SetSize(host.window.content.width, height)
 h:Tick(12)
-assert(app.sidebar.list == list and list.root.height == app.sidebar.ctx.height - 16)
+assert(app.sidebar.list == list and list.root.height == app.sidebar.ctx.height - 48)
+assert(app.sidebar.search == field and field.root.y == 8 and field.root.height == 26)
+assert(list.root.y == 40 and field.root.width == list.root.width)
 assert(rowIcon(row("metal_bank")).associatedObjectID == 438)
 
 -- Closing the bank drops the rows; reopening keeps them collapsed
@@ -164,11 +193,12 @@ local parent = app.sidebar.ctx.parent
 session:CloseBank()
 h:Tick(2)
 assert(app.sidebar == nil and parent.destroyed)
+assert(field.root.destroyed)
 h:OpenBank()
 h:ChooseIcon("bankcleaner")
 h:Tick(4)
 assert(app.sidebar ~= nil and app.sidebar.list ~= list)
-assert(string.find(rows(), "#Player-owned house (7) #Archaeology (2)", 1, true) and #app.sidebar.list.rows == 15, rows())
+assert(string.find(rows(), "#Player-owned house (0) #Archaeology (0)", 1, true) and #app.sidebar.list.rows == 15, rows())
 
 -- A reload reads the saved folders back
 h.host:Reload("bankcleaner", { freshEnvironment = true })

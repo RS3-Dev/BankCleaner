@@ -96,10 +96,10 @@ assert(string.find(columnRows(), "Metal Bank=...", 1, true), columnRows())
 -- Eight objects fit one batch, so the scan sends results once
 h:Tick(3)
 assert(not app.scanning and not app:IsBusy())
-assert(columnRows() == table.concat({ "#Review (3)", "Quest Items=0", "Storage Chest=0", "Diango Reclaimable=0",
-    "#Utility storage (6)", "Metal Bank=3", "Clue Carrier=0", "Tool Leprechaun=0", "Focus Storage=2", "Spirits=0",
-    "Storm Barn=0", "#Player-owned house (7)", "Treasure Chest=0", "Armour Case=0", "Magic Wardrobe=0",
-    "Cape Store=0", "Toy Box=0", "Fancy Dress Box=0", "Bookcase=0", "#Archaeology (2)",
+assert(columnRows() == table.concat({ "#Review (0)", "Quest Items=0", "Storage Chest=0", "Diango Reclaimable=0",
+    "#Utility storage (5)", "Metal Bank=3", "Clue Carrier=0", "Tool Leprechaun=0", "Focus Storage=2", "Spirits=0",
+    "Storm Barn=0", "#Player-owned house (0)", "Treasure Chest=0", "Armour Case=0", "Magic Wardrobe=0",
+    "Cape Store=0", "Toy Box=0", "Fancy Dress Box=0", "Bookcase=0", "#Archaeology (0)",
     "Archaeologist's Workbench=0", "Material Storage=0" }, " "), columnRows())
 -- Choosing the icon and scanning set pages but show none
 assert(not app.ext:IsOpen() and layout.shownPage == nil and takeUpdates() > 0)
@@ -111,14 +111,34 @@ assert(app.ext:IsOpen() and app.category == "metal_bank" and layout.shownPage.ti
 assert(shown() == "[Metal Bank] 2351=5 2349=2 2351=7", shown())
 local metalKey = layout.shownPage.key
 
+-- Item search preserves duplicate stacks, sections, and the folder tree
+local function search(text)
+    app.sidebar.search:SetText(text, true)
+    h:Tick(2)
+end
+search("  IRON  ")
+assert(shown() == "[Metal Bank] 2351=5 2351=7", shown())
+assert(layout.shownPage.key == metalKey and #app.sidebar.list.rows == 22)
+assert(app.sidebar.entriesByID.metal_bank.detail == "2")
+assert(app.sidebar.entriesByID["folder:Utility storage"].label == "Utility storage (2)")
+openRow("focus_storage")
+assert(shown() == "[No cleanup items match your search.]", shown())
+search("memento")
+assert(shown() == "[Focus: Recommended] 55623=1", shown())
+search("[.*")
+assert(shown() == "[No cleanup items match your search.]", shown())
+search(" ")
+openRow("metal_bank")
+assert(shown() == "[Metal Bank] 2351=5 2349=2 2351=7", shown())
+
 -- Focus Storage: sections in definition order, opened as a new view
 openRow("focus_storage")
-assert(shown() == "[Focus Storage] [Focus: Recommended] 55623=1 [Focus: Optional] 25835=1", shown())
+assert(shown() == "[Focus: Recommended] 55623=1 [Focus: Optional] 25835=1", shown())
 assert(layout.shownPage.key ~= metalKey)
 
 -- Quest Items: the quest is unfinished, so the page is empty
 openRow("quest_items")
-assert(shown() == "[Quest Items] [None of these items are in your bank.]", shown())
+assert(shown() == "[None of these items are in your bank.]", shown())
 takeUpdates()
 takeRedraws()
 
@@ -163,7 +183,7 @@ assert(shown() == "[Metal Bank] 2349=2 2351=7" and takeUpdates() == 0, shown())
 h:Tick(4)
 assert(not app:IsBusy() and string.find(columnRows(), "Spirits=1", 1, true), columnRows())
 openRow("spirits")
-assert(shown() == "[Spirits] [Stone Spirits (ore box)] 44799=1", shown())
+assert(shown() == "[Stone Spirits (ore box)] 44799=1", shown())
 
 -- A large batch takes several ticks and sends results once
 -- Only the chosen category's page is sent, so choose one the batch changes
@@ -237,7 +257,7 @@ layout:HandleInventoryUpdate()
 h:Tick(8)
 assert(not app:IsBusy() and string.find(columnRows(), "Diango Reclaimable=120", 1, true), columnRows())
 openRow("diango")
-assert(app:ShownCategory() == "diango" and layout.shownPage.title == "Diango Reclaimable")
+assert(app:ShownCategory() == "diango" and layout.shownPage.title == "")
 key = layout.shownPage.key
 assert(layout.pageDisplay:SetScrollPosition(200) and layout.pageDisplay.scrollY == 200)
 host:Rebuild(function(changed)
@@ -258,7 +278,7 @@ assert(app.sidebar.list:Click("metal_bank"))
 h:Tick(2)
 assert(app:ShownCategory() == nil and layout.shownPage == nil and app.category == "metal_bank")
 openRow("diango")
-assert(app:ShownCategory() == "diango" and layout.shownPage.title == "Diango Reclaimable")
+assert(app:ShownCategory() == "diango" and layout.shownPage.title == "")
 assert(layout.pageDisplay.scrollY == 0)
 
 -- Another extension's page replaces Bank Cleaner's; a scan that ends then shows nothing,
@@ -284,7 +304,7 @@ assert(takeRedraws() > 0 and not app.sidebar.entriesByID.diango.selected)
 assert(layout.shownPage.title == "Eggs" and takeUpdates() == 0)
 openRow("diango")
 assert(app:ShownCategory() == "diango" and app.sidebar.entriesByID.diango.selected)
-assert(layout.shownPage.title == "Diango Reclaimable")
+assert(layout.shownPage.title == "")
 -- After the player picks a native tab, a late scan result shows nothing
 host:Rebuild(function(changed)
     changed[#changed + 1] = { 999991, 1 }
@@ -302,7 +322,7 @@ h:Tick(6)
 assert(not app.scanning and layout.shownPage == nil and app:ShownCategory() == nil)
 layout:SetNativeViewAll(true)
 openRow("diango")
-assert(layout.shownPage.title == "Diango Reclaimable")
+assert(layout.shownPage.title == "")
 
 -- Closing the bank drops the snapshot until it is read again, and shows nothing
 session:CloseBank()

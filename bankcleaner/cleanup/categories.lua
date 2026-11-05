@@ -382,11 +382,23 @@ end
 
 -- List each category's present classified stacks in bank order, an object once per stack
 -- Members are { objectID, section }, keyed by category ID
-function Categories:Members()
+function Categories:Members(query)
+    query = string.lower(tostring(query or "")):match("^%s*(.-)%s*$")
+    local matches = {}
     local members = {}
     for _, definition in ipairs(DEFINITIONS) do members[definition.id] = {} end
     for _, item in ipairs(self.snapshot or {}) do
         local classes = present(item) and self.classes[item.objectID] or nil
+        if classes ~= nil and query ~= "" then
+            local matched = matches[item.objectID]
+            if matched == nil then
+                local ok, object = pcall(function() return config.Obj.FromID(item.objectID) end)
+                local name = ok and read(object, "name") or nil
+                matched = type(name) == "string" and string.find(string.lower(name), query, 1, true) ~= nil
+                matches[item.objectID] = matched
+            end
+            if not matched then classes = nil end
+        end
         for categoryID, section in pairs(classes or {}) do
             local list = members[categoryID]
             list[#list + 1] = { objectID = item.objectID, section = section ~= true and section or nil }

@@ -24,7 +24,9 @@ Click the selected category again to return to the normal bank view. A category 
 | Player-owned house | Items supported by the house's storage categories |
 | Archaeology | Damaged artefacts for workbench storage and materials for material storage |
 
-Click a folder to collapse or expand it. The plugin remembers your collapsed folders.
+Use the search field above the folders to search item names within cleanup pages. Search ignores capitalization. Folders and categories keep their structure, and their counts reflect the matching items. Clear the search to show all cleanup items again.
+
+Click a folder to collapse or expand it. The plugin remembers your collapsed folders. Folder counts add up the matching bank stacks on their category pages, including when collapsed. A stack appearing on two pages contributes to both page counts.
 Folder and category icons use the same item images, spacing and indentation as Bank Tags.
 
 ## Read reclaimable results carefully

@@ -12,3 +12,5 @@ Tests that load Bank Core read it, unchanged, from the checkout `BANKCORE_ROOT` 
 `cleanup_catalogs_test.lua` checks the five wiki-generated catalogs against known items and the counts in `docs/CATALOG_SOURCES.md`; regenerating them with `node tools/catalogs/generate_catalogs.mjs` may change those counts, so update the test and the document together.
 
 The stand-in host is not the game client: these tests show Bank Cleaner's behavior against Bank Core's public API under that model, not how the live client draws, scrolls, or delivers input.
+
+The Cleaner harness adapts `requiredDependencies` for Core's older stand-in loader and rejects startup when a required export is missing. Reload tests cover required Core startup and reloading Cleaner after Core, plus an optional-Core fixture to exercise the defensive dependency-update handler.

@@ -44,6 +44,7 @@ function App.new()
         collapsed = loadCollapsed(),
         -- Mounted column rows
         sidebar = nil,
+        search = "",
         scanning = false,
         started = false,
         shutDown = false,
@@ -51,8 +52,13 @@ function App.new()
     -- The Cleanup column, given to Bank Core on each registration
     self.column = {
         mount = function(ctx)
+            self.search = ""
             self.sidebar = Sidebar.Mount(ctx, function(group) self:ToggleFolder(group) end,
-                function(categoryID) self:ChooseCategory(categoryID) end)
+                function(categoryID) self:ChooseCategory(categoryID) end,
+                function(content)
+                    self.search = tostring(content or "")
+                    self:Publish()
+                end)
             -- Opening Cleanup rereads quest progress; the rows are drawn once the bank is read
             self.categories:Forget()
             self.foldersSignature = nil
@@ -90,9 +96,10 @@ end
 -- Give Bank Core the chosen category's page if it changed
 -- Core redraws it in place while it is shown, and otherwise keeps it until opened
 -- An empty page says scanning only until the first scan ends
-function App:SetPage()
-    local page = Pages.Page(Categories.Definition(self.category), self.categories:Members()[self.category],
-        not self.categories:HasScanned())
+function App:SetPage(members)
+    members = members or self.categories:Members(self.search)
+    local page = Pages.Page(Categories.Definition(self.category), members[self.category],
+        not self.categories:HasScanned(), self.search:match("%S") ~= nil)
     local signature = Pages.Signature(page)
     if self.publishedPage == signature then return true end
     local ok = self.ext:SetPage(page)
@@ -103,8 +110,9 @@ end
 -- Set the chosen category's page, and redraw the folders if their counts changed
 function App:Publish()
     if self.ext == nil then return end
-    self:SetPage()
-    local folders = Pages.Folders(self.categories:Members(), self:IsBusy())
+    local members = self.categories:Members(self.search)
+    self:SetPage(members)
+    local folders = Pages.Folders(members, self:IsBusy())
     local signature = Pages.FoldersSignature(folders)
     local changed = self.foldersSignature ~= signature
     self.folders, self.foldersSignature = folders, signature

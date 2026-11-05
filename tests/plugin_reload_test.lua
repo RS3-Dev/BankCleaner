@@ -1,11 +1,26 @@
 package.path = "./?.lua;./?/init.lua;" .. package.path
 
--- Follow Bank Core through every load order in isolated plugins
+-- Check required load order and defensive dependency updates in isolated plugins
 -- FAKE HOST: stand-in loader, components, and widgets, not the game client
 
 local Harness = require("tools/test_support/cleaner_harness")
 
-local h = Harness.new("plugin_reload")
+-- Production requires Core before Cleaner; reloading Cleaner reconnects after Core reloads.
+local required = Harness.new("plugin_required")
+local loaded, reason = pcall(function() required:LoadCleaner() end)
+assert(not loaded and string.find(reason, "missing required dependency: bankcore", 1, true))
+required:LoadCore()
+required:LoadCleaner()
+assert(required:App().ext ~= nil)
+local oldRequiredApp = required:App()
+required.host:Reload("bankcore", { shutdown = true })
+required.host:Reload("bankcleaner")
+assert(oldRequiredApp.shutDown and required:App().ext ~= nil)
+required.host:Unload("bankcleaner")
+required.host:Unload("bankcore")
+
+-- An optional-only fixture models updates the host does not promise for required Core.
+local h = Harness.new("plugin_reload", { optionalCore = true })
 local Loader = require("tools/test_support/fake_plugin_host")
 local TAB_ID = "__bankutils_ext_tab:bankcleaner"
 h.bankHost:SetItems({ { 2349, 3, "Bronze bar" }, { 1944, 1, "Egg" } })

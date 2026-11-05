@@ -1,5 +1,5 @@
 -- Start Bank Cleaner on top of Bank Core
--- Core is marked optional so the host tells us when it loads or unloads
+-- Core is a required dependency, loaded before this plugin
 
 local SESSION_KEY = "__bankcleaner_session"
 
@@ -25,7 +25,7 @@ local app = App.new()
 _G[SESSION_KEY] = app
 app:Start()
 
--- Connect when Bank Core loads and let go when it unloads
+-- Handle dependency updates defensively if the host supplies them
 function PluginDependencyUpdate(event)
     if event.pluginIdentifier ~= "bankcore" then return end
     if event.enabled then app:Connect() else app:Disconnect() end

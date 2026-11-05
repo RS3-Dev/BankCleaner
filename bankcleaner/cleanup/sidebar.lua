@@ -6,7 +6,9 @@ local Sidebar = {}
 Sidebar.__index = Sidebar
 
 local CONTENT_X = 8
-local LIST_TOP = 8
+local FIELD_TOP = 8
+local FIELD_HEIGHT = 26
+local LIST_TOP = FIELD_TOP + FIELD_HEIGHT + 6
 local LIST_BOTTOM = 8
 local ENTRY_HEIGHT = 32
 local ROW_HEIGHT = 30
@@ -51,7 +53,7 @@ function Sidebar.Entries(folders, collapsed, shownCategory)
         end
         entries[#entries + 1] = { id = FOLDER_PREFIX .. folder.label,
             objectID = Icons.folders[folder.label],
-            label = folder.label .. " (" .. #folder.categories .. ")", enabled = true,
+            label = folder.label .. " (" .. folder.detail .. ")", enabled = true,
             expanded = expanded, selected = holdsShown and not expanded,
             backgroundColour = FOLDER_ROW, hoverColour = ROW_HOVER, selectedColour = ROW_SELECTED,
             textColour = HEADING_TEXT }
@@ -69,9 +71,14 @@ function Sidebar.Entries(folders, collapsed, shownCategory)
 end
 
 -- Create the row list in the mounted column's parent
-function Sidebar.Mount(ctx, onFolder, onCategory)
+function Sidebar.Mount(ctx, onFolder, onCategory, onSearch)
     local self = setmetatable({ ctx = ctx, entries = {}, entriesByID = {} }, Sidebar)
     local width, height = Sidebar.ListSize(ctx)
+    self.search = prettyui.TextField.new(ctx.parent, {
+        x = CONTENT_X, y = FIELD_TOP, width = width, height = FIELD_HEIGHT,
+        placeholder = "Search cleanup items...", text = "", maxLength = 200,
+        onChange = function(_, _, content) onSearch(content) end,
+    })
     self.list = prettyui.List.new(ctx.parent, {
         x = CONTENT_X, y = LIST_TOP, width = width, height = height, entryHeight = ENTRY_HEIGHT,
         maxSelected = 1, backgroundColour = 0x00000000, borderColour = INNER_FRAME,
@@ -91,6 +98,8 @@ end
 
 -- Fit the list to the column's new size
 function Sidebar:Resize()
+    local width = Sidebar.ListSize(self.ctx)
+    self.search.root:SetSize(width, FIELD_HEIGHT)
     self.list:SetSize(Sidebar.ListSize(self.ctx))
 end
 
@@ -202,9 +211,10 @@ end
 
 -- Destroy the list; Bank Core destroys the parent after unmount
 function Sidebar:Destroy()
-    local list = self.list
-    self.list = nil
+    local list, search = self.list, self.search
+    self.list, self.search = nil, nil
     if list ~= nil then pcall(function() list:Destroy() end) end
+    if search ~= nil then pcall(function() search:Destroy() end) end
 end
 
 return Sidebar

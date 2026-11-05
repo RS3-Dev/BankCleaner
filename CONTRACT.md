@@ -4,7 +4,7 @@ This describes what Bank Cleaner uses from Bank Core and the host. Bank Cleaner 
 
 ## Plugin identity
 
-- Plugin name `bankcleaner`. PrettyUI is required; `bankcore` is an optional dependency.
+- Plugin name `bankcleaner`. PrettyUI and Bank Utilities Core (`bankcore`) are declared in `requiredDependencies`. Core uses the local development folder string `"bankcore"` until it has a published mod.io ID.
 - The entry returns nothing. The running session is `_G.__bankcleaner_session`; a new load shuts it down first, and it is cleared only while it still holds this load's value.
 - Event names start with `bankcleaner_`: `bankcleaner_scan` (the classification scan, subscribed only while it runs). The manifest sets `hasRibbonIcon` to `false`, and Bank Cleaner does not subscribe to `Event.ContentLayerReady`.
 - Bank Cleaner saves only the collapsed Cleanup folders, under `bankcleaner_folders`.
@@ -21,7 +21,7 @@ Only Bank Core's launch API (`docs/LAUNCH_API_SPEC.md` in Bank Core):
 
 ## Page contents
 
-- A page is `{ title = <Label>, rows }`; Bank Core draws the title as the heading. Rows are `{ label = text }` and `{ slots = { objectID, ... } }`.
+- A page is `{ title = <optional Label>, rows }`; Bank Core draws a heading only when a title is supplied. Bank Cleaner omits the title when the first row already supplies a section or status label. Rows are `{ label = text }` and `{ slots = { objectID, ... } }`.
 - A category lists an object once per present stack it matches, in bank order. Bank Core shows an object's stocked stacks first, so the slots show exactly the present stacks; placeholders are never listed, so no ghost is drawn unless the bank changes before the next read.
 - A category without sections is one slots row. Focus Storage, Spirits, Storage Chest, Diango Reclaimable, and Storm Barn list each non-empty section's label and slots in the definition's order; Diango's and Storm Barn's sections come from their catalogs. An object in several of a category's sections is shown in the first.
 - A category with no members is one label: "Scanning bank..." until the first scan since the bank opened or the column was mounted has finished, then "None of these items are in your bank."
@@ -35,4 +35,4 @@ Only Bank Core's launch API (`docs/LAUNCH_API_SPEC.md` in Bank Core):
 
 ## Host behavior Bank Cleaner relies on
 
-Checked with Bank Core's stand-in host only: `config.Quest.FromID(id).hasFinishedQuest` for quest completion (any error, missing config, or unfinished quest leaves the item out; the Quest Items and Storage Chest rules share it), `PluginDependencyUpdate` on loads and reloads, `Event.Logic`, PrettyUI's `List` in the column, `PersistentDB:GetStructuredData` and `SetStructuredData` for the collapsed folders, and the folder chevron's `id.Sprite.BANK_ARROW_UP_0` turned through the same sprite rotation fields Bank Tags sets.
+Checked with Bank Core's stand-in host only: `config.Quest.FromID(id).hasFinishedQuest` for quest completion (any error, missing config, or unfinished quest leaves the item out; the Quest Items and Storage Chest rules share it), required dependencies available before startup, `Event.Logic`, PrettyUI's `List` in the column, `PersistentDB:GetStructuredData` and `SetStructuredData` for the collapsed folders, and the folder chevron's `id.Sprite.BANK_ARROW_UP_0` turned through the same sprite rotation fields Bank Tags sets. Required dependency change notifications are not documented; reload Bank Cleaner after reloading Core. The defensive `PluginDependencyUpdate` handler is tested with an optional-dependency fixture.

@@ -64,6 +64,18 @@ function Harness.new(name, options)
     local out = "dist/test/" .. name
     local built = Build.Run({ out = out })
     local Loader = require("tools/test_support/fake_plugin_host")
+    -- Core's older stand-in reads the legacy dependencies field only.
+    local cleanerManifest = Loader.ReadManifest(built.folder)
+    local Json = require("tools/json")
+    local declared = Json.decode(assert(readText(built.folder .. "/plugin.json")))
+    for dependency in pairs(declared.requiredDependencies or {}) do
+        cleanerManifest.dependencies[dependency] = true
+    end
+    -- Exercise the defensive update handler separately from required load order.
+    if options.optionalCore then
+        cleanerManifest.dependencies.bankcore = nil
+        cleanerManifest.optional.bankcore = true
+    end
     local globals = { ui = ui, id = id, Event = Event, config = config, Vector4 = Vector4,
         Mouse = Mouse, MiniMenuActionType = MiniMenuActionType,
         Player = { IsAvailable = function() return true end }, GameState = { GAME = 30 },
@@ -82,6 +94,7 @@ function Harness.new(name, options)
         coreFolder = coreRoot,
         cleanerFolder = built.folder,
         built = built,
+        cleanerManifest = cleanerManifest,
     }, { __index = Harness })
 end
 
@@ -93,7 +106,10 @@ end
 
 -- Load the built Bank Cleaner folder
 function Harness:LoadCleaner()
-    self.cleaner = self.host:Load("bankcleaner", self.cleanerFolder)
+    for dependency in pairs(self.cleanerManifest.dependencies) do
+        assert(self.host.exports[dependency] ~= nil, "missing required dependency: " .. dependency)
+    end
+    self.cleaner = self.host:Load("bankcleaner", self.cleanerFolder, self.cleanerManifest)
     return self.cleaner
 end
 

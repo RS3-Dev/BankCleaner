@@ -9,7 +9,7 @@ This records the plan agreed before implementation for making Bank Cleaner a sta
 
 ## Identity
 
-- Plugin `bankcleaner`, Core owner `RegisterExtension("bankcleaner", "Bank Cleaner")`. PrettyUI `6398181` is required; `bankcore` is optional, because the host reports changes only for optional dependencies.
+- Plugin `bankcleaner`, Core owner `RegisterExtension("bankcleaner", "Bank Cleaner")`. PrettyUI `6398181` and `bankcore` are required dependencies. Core uses its local folder string until a mod.io ID is available. Reload Bank Cleaner after reloading Core; the host documents change notifications only for optional dependencies.
 - Every runtime module lives under `bankcleaner/` (`app`, `cleanup/categories`, `cleanup/pages`, `data/*`), so no require path collides with Bank Core's or another plugin's.
 - Events `bankcleaner_scan` and `bankcleaner_content`; the reload global `__bankcleaner_session`. Bank Cleaner publishes no API; it saves only the collapsed Cleanup folders, under `bankcleaner_folders`.
 
