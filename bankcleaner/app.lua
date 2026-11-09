@@ -23,6 +23,7 @@ local OPEN_REFUSALS = {
     busy = "The bank is still updating. Try again.",
 }
 
+-- Find the native state blocking cleanup pages
 local function bankStateBlocker(state)
     if state == nil then return "stale" end
     if not state.bankOpen then return "bank_closed" end
@@ -32,6 +33,7 @@ local function bankStateBlocker(state)
     if not state.viewAll then return "not_all_items" end
 end
 
+-- Explain why Bank Core cannot show cleanup items
 local function refusal(reason)
     return OPEN_REFUSALS[reason] or ("Cleanup items could not be shown (" .. tostring(reason) .. ").")
 end
@@ -200,8 +202,9 @@ function App:RefreshSidebar()
     self.sidebar:SetEntries(Sidebar.Entries(self.folders, self.collapsed, self:ShownCategory()))
 end
 
--- Show a notice over the bank title without rebuilding the column.
+-- Update the bank banner without rebuilding the column
 function App:ShowStatus(text)
+    if self.status == text then return end
     self.status = text
     if self.sidebar ~= nil then self.sidebar:SetStatus(text) end
 end
@@ -215,7 +218,7 @@ function App:OnBankStateChanged(state)
     if blocked ~= nil then
         self:StopScan()
         if self.ext:IsOpen() then self.ext:Close() end
-        self:ShowStatus(refusal(blocked))
+        if blocked ~= previous then self:ShowStatus(nil) end
         self:RefreshSidebar()
     elseif previous ~= nil then
         self:ShowStatus(nil)
@@ -230,7 +233,10 @@ function App:ChooseCategory(categoryID)
     local ext = self.ext
     if ext == nil then return end
     local blocked = self:OnBankStateChanged(ext:GetBankState())
-    if blocked ~= nil then return false end
+    if blocked ~= nil then
+        self:ShowStatus(refusal(blocked))
+        return false
+    end
     if categoryID == self:ShownCategory() then
         ext:Close()
         self:ShowStatus(nil)

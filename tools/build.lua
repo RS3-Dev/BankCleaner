@@ -1,5 +1,5 @@
 -- Build the plugin folder from the entry's require graph
--- Usage from the repository root: lua54 tools/build.lua [--out dist/release]
+-- Usage: lua54 tools/build.lua [--out dist/release] [--release]
 
 local ModuleGraph = require("tools/module_graph")
 
@@ -209,6 +209,11 @@ function Build.Run(options)
         if file.manifest and not string.find(file.bytes, '"name"%s*:%s*"' .. Build.PLUGIN.name .. '"') then
             error(file.source .. " does not name the " .. Build.PLUGIN.name .. " plugin", 0)
         end
+        if file.manifest and options.release then
+            local count
+            file.bytes, count = string.gsub(file.bytes, '"bankcore"%s*:%s*"bankcore"', '"bankcore": 6464293')
+            if count ~= 1 then error(file.source .. " needs exactly one local bankcore dependency", 0) end
+        end
     end
 
     cleanOutput(out)
@@ -237,6 +242,9 @@ local function readArguments(arguments)
         if arguments[index] == "--out" then
             options.out = arguments[index + 1]
             index = index + 2
+        elseif arguments[index] == "--release" then
+            options.release = true
+            index = index + 1
         else
             error("unknown option " .. tostring(arguments[index]), 0)
         end

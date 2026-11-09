@@ -4,7 +4,7 @@ This describes what Bank Cleaner uses from Bank Core and the host. Bank Cleaner 
 
 ## Plugin identity
 
-- Plugin name `bankcleaner`. PrettyUI and Bank Utilities Core (`bankcore`) are declared in `requiredDependencies`. Core uses the local development folder string `"bankcore"` until it has a published mod.io ID.
+- Plugin name `bankcleaner`. PrettyUI and Bank Utilities Core (`bankcore`) are declared in `requiredDependencies`. Development manifests use `"bankcore": "bankcore"`. Release builds (`--release`) and runtime ZIPs use `"bankcore": 6464293` for mod.io.
 - The entry returns nothing. The running session is `_G.__bankcleaner_session`; a new load shuts it down first, and it is cleared only while it still holds this load's value.
 - Event names start with `bankcleaner_`: `bankcleaner_scan` (the classification scan, subscribed only while it runs). The manifest sets `hasRibbonIcon` to `false`, and Bank Cleaner does not subscribe to `Event.ContentLayerReady`.
 - Bank Cleaner saves only the collapsed Cleanup folders, under `bankcleaner_folders`.
@@ -17,7 +17,7 @@ Only Bank Core's public API (`docs/API.md` in Bank Core), requiring Core 1.5.0 o
 - The extension's `SetPage`, `Open`, `Close`, `IsOpen`, `GetBankItems`, `GetBankState`, and `Dispose`.
 - One rail icon with its column. `mount(ctx)` builds a PrettyUI `List` in `ctx.parent` of a folder row per group and, under an open folder, a row per category with its count (at most six characters); `resize(ctx)` fits the list to `ctx.width` and `ctx.height`; `unmount` destroys it. A folder row opens or collapses and leaves the page alone.
 - A category row whose category is shown calls `Close`. Any other row chooses that category, calls `SetPage` with its page, then `Open`; refusals show an actionable error over the bank title in `ctx.overlay` and outline no row. A successful opening clears the error. The shown category is the one whose page Bank Cleaner last set, while `IsOpen()` says it is shown; `onClose` redraws the rows so the outline goes. The chosen category survives a reconnect, which shows nothing until a row is clicked; a reload starts on Quest Items.
-- Cleaner reads `GetBankState()` after registration and before reads and category clicks, and receives `onBankStateChanged(state)`. Pages require `bankOpen` and `viewAll`, with `presetOpen`, `searchActive`, and `filterActive` false. A restriction closes only Cleaner's page, stops scanning, clears its selection, and explains the restriction in the banner. Recovery clears the banner and refreshes visible counts, but never reopens a page. Native search and filters do not include Cleaner's own search field. Core owns state callback delivery and disposal.
+- Cleaner reads `GetBankState()` after registration and before reads and category clicks, and receives `onBankStateChanged(state)`. Pages require `bankOpen` and `viewAll`, with `presetOpen`, `searchActive`, and `filterActive` false. A restriction closes only Cleaner's page, stops scanning, and clears its selection silently. Clicking a category while restricted explains the refusal in the banner; folder clicks do not show warnings. Recovery clears the banner and refreshes visible counts, but never reopens a page. Native search and filters do not include Cleaner's own search field. Core owns state callback delivery and disposal.
 - No settings, menus, drops, or highlights.
 
 ## Page contents

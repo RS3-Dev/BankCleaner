@@ -22,11 +22,11 @@ Everything here is checked against Bank Core's stand-in host only. Nothing in th
 ## Requirements and load order
 
 - **PrettyUI** is a required dependency.
-- **Bank Utilities Core 1.5.0 or later** (`bankcore`) is a required dependency for `GetBankState` and separate native search/filter state. The manifest uses the local development folder string `"bankcore"`; replace it with Core's numeric mod.io ID when published to support automatic installation.
+- **Bank Utilities Core 1.5.0 or later** (`bankcore`) is a required dependency for `GetBankState` and separate native search/filter state. The source manifest and local builds use `"bankcore": "bankcore"`. Release builds use `"bankcore": 6464293` for mod.io installation; the source manifest is never rewritten.
 
 The host loads required dependencies before Bank Cleaner. Required dependency change notifications are not documented, so reload Bank Cleaner after reloading Bank Core. The defensive `PluginDependencyUpdate` handler remains for hosts that send those notifications. Reloading Bank Cleaner shuts down the previous copy in the same Lua state first; each registration replaces any earlier one of `bankcleaner`.
 
-Cleaner follows Core's native bank-state notifications and checks the current snapshot before reading items or opening a category. A closed bank, another native tab, an open preset selector, native search, or native filter stops scanning and closes Cleaner's page. A banner over the bank title explains how to recover; clearing the restriction refreshes visible counts but waits for a category click to reopen a page. Cleaner's search field does not trigger native search state.
+Cleaner follows Core's native bank-state notifications and checks the current snapshot before reading items or opening a category. A closed bank, another native tab, an open preset selector, native search, or native filter stops scanning and closes Cleaner's page. Clicking a category while restricted shows a banner over the bank title explaining how to recover. Entering a restricted state does not show a warning; clearing the restriction refreshes visible counts but waits for a category click to reopen a page. Cleaner's search field does not trigger native search state.
 
 **Old installs.** The old integrated `bankutils` plugin (and the older `bankutilities`) also had a Cleanup tab. They are not expected to work against this Bank Core, whose private bridge they used was removed; disable them so the cleanup views are not loaded twice.
 

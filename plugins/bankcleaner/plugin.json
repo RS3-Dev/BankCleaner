@@ -5,7 +5,7 @@
   "hasRibbonIcon": false,
   "requiredDependencies": {
     "prettyui": 6398181,
-    "bankcore": 6464293
+    "bankcore": "bankcore"
   },
   "requiredPermissions": [],
   "optionalPermissions": []

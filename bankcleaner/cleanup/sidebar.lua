@@ -21,6 +21,10 @@ local CHEVRON_SIZE = 14
 local ACCENT_WIDTH = 2
 local COUNT_WIDTH = 42
 local FOLDER_PREFIX = "folder:"
+-- Match Bank Tags' warning banner
+local STATUS_HEIGHT = 26
+local STATUS_BACKGROUND = 0x2A2622FF
+local STATUS_TEXT = 0xE57373FF
 -- Bank Tags' theme: gold headings over a warm folder row, categories on warmer stripes
 local HEADING_TEXT = 0xE7C878FF
 local HEADING_LINE = 0x756C60FF
@@ -88,19 +92,19 @@ function Sidebar.Mount(ctx, onFolder, onCategory, onSearch)
             if group ~= nil then onFolder(group) else onCategory(entryID) end
         end,
     })
-    -- Match Bank Tags' notice over the bank title, outside the item page.
+    -- Cover the bank title with Bank Tags' centered warning banner
     self.statusBanner = ui.Layer.new(ctx.overlay)
     self.statusBanner:SetPos(80, 5)
-    self.statusBanner:SetSize(-160, 26, 1.0, 0)
+    self.statusBanner:SetSize(-160, STATUS_HEIGHT, 1.0, 0)
     self.statusBanner.clickthrough = true
     local background = ui.Rectangle.new(self.statusBanner)
-    background:SetSize(0, 26, 1.0, 0)
-    background.fill, background.rgba, background.clickthrough = true, FOLDER_ROW_EVEN, true
+    background:SetSize(0, STATUS_HEIGHT, 1.0, 0)
+    background.fill, background.rgba, background.clickthrough = true, STATUS_BACKGROUND, true
     self.statusText = ui.Text.new(self.statusBanner)
     self.statusText:SetPos(8, 0)
-    self.statusText:SetSize(-16, 26, 1.0, 0)
+    self.statusText:SetSize(-16, STATUS_HEIGHT, 1.0, 0)
     self.statusText.font = id.Font.MUSEO_SANS_11PT_REGULAR
-    self.statusText.rgba = 0xE6A39AFF
+    self.statusText.rgba = STATUS_TEXT
     self.statusText.isShadowed, self.statusText.clickthrough = true, true
     self.statusText.maxLines = 2
     self.statusText.alignHorizontal, self.statusText.alignVertical = ui.AlignMode.CENTRE, ui.AlignMode.CENTRE

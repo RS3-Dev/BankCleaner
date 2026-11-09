@@ -26,30 +26,74 @@ assert(app.sidebar ~= nil and app:ChooseCategory("metal_bank"))
 h:Tick(2)
 assert(app.ext:IsOpen())
 
+-- Match Bank Tags' banner without covering item slots or taking clicks
+local sidebar = app.sidebar
+local banner, text = sidebar.statusBanner, sidebar.statusText
+local list, field = sidebar.list, sidebar.search
+assert(banner.parent == sidebar.ctx.overlay and banner.clickthrough and text.clickthrough)
+assert(banner.x == 80 and banner.y == 5 and banner.height == 26)
+assert(banner.x + banner.width / 2 == sidebar.ctx.overlay.width / 2)
+assert(text.x == 8 and text.height == 26 and text.maxLines == 2)
+assert(text.font == id.Font.MUSEO_SANS_11PT_REGULAR and text.rgba == 0xE57373FF and text.isShadowed)
+assert(text.alignHorizontal == ui.AlignMode.CENTRE and text.alignVertical == ui.AlignMode.CENTRE)
+assert(banner.children[1].fill and banner.children[1].rgba == 0x2A2622FF
+    and banner.children[1].clickthrough)
+
 local function ready()
     return { bankOpen = true, viewAll = true, presetOpen = false,
         searchActive = false, filterActive = false }
 end
 
--- Every blocked state removes our page and its selection, and explains recovery.
+-- Restrictions close the page silently; a category click explains the refusal
 for _, case in ipairs({
-    { "bankOpen", false, "Open your bank" },
-    { "viewAll", false, 'Select "All Items"' },
-    { "presetOpen", true, "Close the preset selector" },
-    { "searchActive", true, "Clear the bank search" },
-    { "filterActive", true, "Clear the bank filter" },
+    { "bankOpen", false, "Open your bank to view cleanup items." },
+    { "viewAll", false, 'Select "All Items" to view cleanup items.' },
+    { "presetOpen", true, "Close the preset selector to view cleanup items." },
+    { "searchActive", true, "Clear the bank search to view cleanup items." },
+    { "filterActive", true, "Clear the bank filter to view cleanup items." },
 }) do
     local state = ready()
     state[case[1]] = case[2]
     listener(state)
     assert(app:ShownCategory() == nil and layout.shownPage == nil, case[1])
-    assert(not app.scanning and app.status:find(case[3], 1, true), case[1])
+    assert(not app.scanning and app.status == nil and banner.hidden, case[1])
+    local getState = app.ext.GetBankState
+    app.ext.GetBankState = function() return state end
+    assert(not app:ChooseCategory("focus_storage"))
+    assert(app.status == case[3], case[1])
     assert(not app.sidebar.statusBanner.hidden and app.sidebar.statusText.content == app.status)
+    assert(app.sidebar == sidebar and sidebar.list == list and sidebar.search == field)
+    listener(state)
+    assert(sidebar.statusBanner == banner and text.content == case[3])
     for _, entry in ipairs(app.sidebar.entries) do assert(not entry.selected) end
+    app.ext.GetBankState = getState
     listener(ready())
     assert(not app.ext:IsOpen() and app.status == nil and app.sidebar.statusBanner.hidden)
     assert(app:ChooseCategory("metal_bank"))
 end
+
+-- Changed restrictions clear old warnings; clicks show the highest priority
+local combined = ready()
+combined.viewAll, combined.presetOpen, combined.searchActive, combined.filterActive = false, true, true, true
+for _, case in ipairs({
+    { "presetOpen", "Close the preset selector to view cleanup items." },
+    { "searchActive", "Clear the bank search to view cleanup items." },
+    { "filterActive", "Clear the bank filter to view cleanup items." },
+    { "viewAll", 'Select "All Items" to view cleanup items.' },
+}) do
+    listener(combined)
+    assert(app.status == nil and banner.hidden)
+    local getState = app.ext.GetBankState
+    app.ext.GetBankState = function() return combined end
+    assert(not app:ChooseCategory("metal_bank"))
+    app.ext.GetBankState = getState
+    assert(app.status == case[2] and text.content == case[2] and not banner.hidden)
+    assert(app:ShownCategory() == nil and not app.scanning)
+    combined[case[1]] = case[1] == "viewAll"
+end
+listener(ready())
+assert(app.status == nil and banner.hidden and not app.ext:IsOpen())
+assert(app:ChooseCategory("metal_bank"))
 
 -- Another extension's page is never closed by Cleaner's state handler.
 local other = assert(core.result.Register({ id = "other", name = "Other" }))
@@ -82,6 +126,12 @@ for _, case in ipairs({
     { "Clear Filter", "Clear the bank filter" },
 }) do
     cancel.visible, cancelText.content = true, case[1]
+    session.pluginPages:Notify()
+    h:Tick(2)
+    assert(not app.ext:IsOpen() and app.status == nil and banner.hidden)
+    app:ToggleFolder("Review")
+    assert(app.status == nil and banner.hidden)
+    app:ToggleFolder("Review")
     assert(not app:ChooseCategory("focus_storage"))
     assert(app.category == "metal_bank" and layout.shownPage == nil)
     assert(app.status:find(case[2], 1, true))
@@ -104,7 +154,9 @@ assert(app:ChooseCategory("metal_bank"))
 preset.visible = true
 session.pluginPages:Notify()
 h:Tick(2)
-assert(not app.ext:IsOpen() and app.status == "Close the preset selector to view cleanup items.")
+assert(not app.ext:IsOpen() and app.status == nil and banner.hidden)
+assert(not app:ChooseCategory("focus_storage"))
+assert(app.status == "Close the preset selector to view cleanup items." and not banner.hidden)
 preset.visible = false
 session.pluginPages:Notify()
 h:Tick(2)
