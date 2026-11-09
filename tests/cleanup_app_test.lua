@@ -98,7 +98,7 @@ h:Tick(3)
 assert(not app.scanning and not app:IsBusy())
 assert(columnRows() == table.concat({ "#Review (0)", "Quest Items=0", "Storage Chest=0", "Diango Reclaimable=0",
     "#Utility storage (5)", "Metal Bank=3", "Clue Carrier=0", "Tool Leprechaun=0", "Focus Storage=2", "Spirits=0",
-    "Storm Barn=0", "#Player-owned house (0)", "Treasure Chest=0", "Armour Case=0", "Magic Wardrobe=0",
+    "Storm Barn=0", "Seed Bag=0", "#Player-owned house (0)", "Treasure Chest=0", "Armour Case=0", "Magic Wardrobe=0",
     "Cape Store=0", "Toy Box=0", "Fancy Dress Box=0", "Bookcase=0", "#Archaeology (0)",
     "Archaeologist's Workbench=0", "Material Storage=0" }, " "), columnRows())
 -- Choosing the icon and scanning set pages but show none
@@ -118,7 +118,7 @@ local function search(text)
 end
 search("  IRON  ")
 assert(shown() == "[Metal Bank] 2351=5 2351=7", shown())
-assert(layout.shownPage.key == metalKey and #app.sidebar.list.rows == 22)
+assert(layout.shownPage.key == metalKey and #app.sidebar.list.rows == 23)
 assert(app.sidebar.entriesByID.metal_bank.detail == "2")
 assert(app.sidebar.entriesByID["folder:Utility storage"].label == "Utility storage (2)")
 openRow("focus_storage")
@@ -148,7 +148,7 @@ layout:HandleInventoryUpdate()
 h:Tick(4)
 assert(not app.categories:IsScanning() and takeUpdates() == 0 and takeRedraws() == 0)
 
--- Withdrawing a stack drops it at once without a scan, redrawn in place
+-- Withdrawing keeps the slots fixed; Core updates quantities and draws an empty slot
 openRow("metal_bank")
 local key = layout.shownPage.key
 takeUpdates()
@@ -159,12 +159,18 @@ end)
 layout:HandleInventoryUpdate()
 h:Tick(4)
 assert(not app.scanning and #app.categories.snapshot == 7)
-assert(shown() == "[Metal Bank] 2349=2 2351=7", shown())
-assert(takeUpdates() == 1 and string.find(columnRows(), "Metal Bank=2", 1, true))
+assert(shown() == "[Metal Bank] 2351=7 2349=2 2351=0", shown())
+assert(takeUpdates() == 0 and string.find(columnRows(), "Metal Bank=2", 1, true))
 assert(layout.shownPage.key == key)
 
+-- Closing and reopening drops withdrawn slots from the new layout
+assert(app.sidebar.list:Click("metal_bank"))
+h:Tick(2)
+openRow("metal_bank")
+assert(shown() == "[Metal Bank] 2349=2 2351=7", shown())
+
 -- A new object shows busy counts until the batch finishes
--- Known members show at once, then the page and column are sent again
+-- The open page stays fixed while counts track newly classified items
 host:Rebuild(function(specs)
     specs[#specs + 1] = { 44799, 1 }
     return specs
@@ -185,8 +191,7 @@ assert(not app:IsBusy() and string.find(columnRows(), "Spirits=1", 1, true), col
 openRow("spirits")
 assert(shown() == "[Stone Spirits (ore box)] 44799=1", shown())
 
--- A large batch takes several ticks and sends results once
--- Only the chosen category's page is sent, so choose one the batch changes
+-- A large batch updates counts without replacing the open page
 openRow("metal_bank")
 local specs = {}
 for index = 1, 60 do specs[index] = { 30000 + index, 1 } end
@@ -216,7 +221,9 @@ h:Tick(6)
 assert(not app.categories:IsScanning() and not app.scanning and #app.categories.snapshot == 62)
 local classes = app.categories.classes
 assert(classified >= 25 and classes[30001] ~= nil and classes[30060] ~= nil and classes[2355] ~= nil)
-assert(afterRead > 0 and takeUpdates() > 0)
+assert(afterRead == 0 and takeUpdates() == 0)
+assert(app.sidebar.list:Click("metal_bank"))
+h:Tick(2)
 openRow("metal_bank")
 assert(shown() == "[Metal Bank] 2353=1 2355=1", shown())
 
@@ -260,6 +267,7 @@ openRow("diango")
 assert(app:ShownCategory() == "diango" and layout.shownPage.title == "")
 key = layout.shownPage.key
 assert(layout.pageDisplay:SetScrollPosition(200) and layout.pageDisplay.scrollY == 200)
+takeUpdates()
 host:Rebuild(function(changed)
     table.remove(changed, 1)
     return changed
@@ -268,6 +276,7 @@ layout:HandleInventoryUpdate()
 h:Tick(4)
 assert(string.find(columnRows(), "Diango Reclaimable=119", 1, true), columnRows())
 assert(layout.shownPage.key == key and layout.pageDisplay.scrollY == 200, layout.pageDisplay.scrollY)
+assert(takeUpdates() == 0 and #layout:BuildPageItems() == 120)
 
 -- Choosing another category opens a new view, starting at the top
 openRow("metal_bank")
@@ -323,6 +332,23 @@ assert(not app.scanning and layout.shownPage == nil and app:ShownCategory() == n
 layout:SetNativeViewAll(true)
 openRow("diango")
 assert(layout.shownPage.title == "")
+
+-- Seed Bag retains withdrawn seeds until the page is reopened
+host:SetItems({ { 5318, 10, "Potato seed" }, { EGG, 1, "Egg" },
+    { 64003, 3, "Bogwart spore" }, { 5288, 0, "Papaya tree seed" } })
+layout:HandleInventoryUpdate()
+h:Tick(6)
+openRow("seed_bag")
+assert(layout.shownPage.title == "Seed Bag" and shown() == "[Seed Bag] 5318=10 64003=3", shown())
+assert(string.find(columnRows(), "Seed Bag=2", 1, true), columnRows())
+host:SetItems({ { 64003, 3, "Bogwart spore" } })
+layout:HandleInventoryUpdate()
+h:Tick(6)
+assert(shown() == "[Seed Bag] 5318=0 64003=3" and string.find(columnRows(), "Seed Bag=1", 1, true), shown())
+assert(app.sidebar.list:Click("seed_bag"))
+h:Tick(2)
+openRow("seed_bag")
+assert(shown() == "[Seed Bag] 64003=3", shown())
 
 -- Closing the bank drops the snapshot until it is read again, and shows nothing
 session:CloseBank()

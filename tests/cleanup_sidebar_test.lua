@@ -52,10 +52,10 @@ end
 
 -- Every folder starts open, in group order, in Core's column
 assert(layout.tabMount ~= nil and app.sidebar ~= nil and app.sidebar.list.root.parent == app.sidebar.ctx.parent)
-assert(#app.sidebar.list.rows == 22)
+assert(#app.sidebar.list.rows == 23)
 assert(string.find(rows(), "#Review (0) Quest Items=0 Storage Chest=0 Diango Reclaimable=0 "
     .. "#Utility storage (1) Metal Bank=1 ", 1, true) == 1, rows())
-assert(string.find(rows(), "Storm Barn=0 #Player-owned house (0)", 1, true), rows())
+assert(string.find(rows(), "Storm Barn=0 Seed Bag=0 #Player-owned house (0)", 1, true), rows())
 local archaeology = "#Archaeology (0) Archaeologist's Workbench=0 Material Storage=0"
 assert(string.sub(rows(), -#archaeology) == archaeology, rows())
 -- Icons and indents match Bank Tags, with counts kept at the right
@@ -64,7 +64,7 @@ assert(folder.label.x == 34 and category.label.x == 54)
 local expectedIcons = {
     ["folder:Review"] = 1586, quest_items = 9813, storage_chest = 6759, diango = 13663,
     ["folder:Utility storage"] = 40248, metal_bank = 438, clue_carrier = 47836,
-    tool_leprechaun = 676, focus_storage = 55336, spirits = 44789, storm_barn = 3243,
+    tool_leprechaun = 676, focus_storage = 55336, spirits = 44789, storm_barn = 3243, seed_bag = 52212,
     ["folder:Player-owned house"] = 8013, treasure_chest = 47434, armour_case = 9828,
     magic_wardrobe = 9834, cape_store = 9822, toy_box = 9838, fancy_dress_box = 9825, bookcase = 50924,
     ["folder:Archaeology"] = 49429, workbench = 49923, material_storage = 49512,
@@ -109,7 +109,7 @@ for _, child in ipairs(row("folder:Utility storage").root.children) do
     if child.spriteID == id.Sprite.BANK_ARROW_UP_0 then assert(child.rotation == math.pi * 1.5) end
 end
 click("folder:Utility storage")
-assert(#app.sidebar.list.rows == 22 and #h.databases.bankcleaner.bankcleaner_folders.collapsed == 0)
+assert(#app.sidebar.list.rows == 23 and #h.databases.bankcleaner.bankcleaner_folders.collapsed == 0)
 
 -- A category click opens and frames it; a second click closes it
 click("metal_bank")
@@ -198,14 +198,14 @@ h:OpenBank()
 h:ChooseIcon("bankcleaner")
 h:Tick(4)
 assert(app.sidebar ~= nil and app.sidebar.list ~= list)
-assert(string.find(rows(), "#Player-owned house (0) #Archaeology (0)", 1, true) and #app.sidebar.list.rows == 15, rows())
+assert(string.find(rows(), "#Player-owned house (0) #Archaeology (0)", 1, true) and #app.sidebar.list.rows == 16, rows())
 
 -- A reload reads the saved folders back
 h.host:Reload("bankcleaner", { freshEnvironment = true })
 h:Tick(4)
 app = h:App()
 assert(app.collapsed["Player-owned house"] and app.collapsed.Review == nil)
-assert(#app.sidebar.list.rows == 15, rows())
+assert(#app.sidebar.list.rows == 16, rows())
 assert(rowIcon(row("folder:Player-owned house")).associatedObjectID == 8013)
 -- Saved values that are not group names are ignored
 h.databases.bankcleaner.bankcleaner_folders = { collapsed = { "Bogus", 5, "Review" } }
@@ -222,7 +222,7 @@ app = h:App()
 -- A refused save still keeps the folder as shown
 h.host.rejectWrites = true
 click("folder:Review")
-assert(app.collapsed.Review and #app.sidebar.list.rows == 19)
+assert(app.collapsed.Review and #app.sidebar.list.rows == 20)
 h.host.rejectWrites = false
 click("folder:Review")
 assert(app.collapsed.Review == nil)

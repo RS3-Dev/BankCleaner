@@ -43,6 +43,7 @@ local CATALOGS = {
     stormBarnObjects = { sections = {}, objects = { [111] = "anachronia" } },
     workbenchArtefactObjects = { [112] = true },
     materialStorageObjects = { [113] = true },
+    seedBagObjects = { [103] = true },
 }
 
 -- Build a snapshot from { objectID, quantity } pairs, as GetBankItems returns it
@@ -75,7 +76,7 @@ assert(table.concat(labels, ";") == table.concat({
     "toy_box=Toy Box@Player-owned house", "fancy_dress_box=Fancy Dress Box@Player-owned house",
     "bookcase=Bookcase@Player-owned house", "focus_storage=Focus Storage@Utility storage",
     "spirits=Spirits@Utility storage", "storage_chest=Storage Chest@Review", "diango=Diango Reclaimable@Review",
-    "storm_barn=Storm Barn@Utility storage", "workbench=Archaeologist's Workbench@Archaeology",
+    "storm_barn=Storm Barn@Utility storage", "seed_bag=Seed Bag@Utility storage", "workbench=Archaeologist's Workbench@Archaeology",
     "material_storage=Material Storage@Archaeology" }, ";"), table.concat(labels, ";"))
 -- Every category's group is a folder
 local groups = {}
@@ -109,6 +110,7 @@ assert(listed(members, "tool_leprechaun") == "102")
 assert(listed(members, "toy_box") == "103")
 assert(listed(members, "fancy_dress_box") == "100")
 assert(listed(members, "bookcase") == "101")
+assert(listed(members, "seed_bag") == "103")
 -- Members record sections; pages order them by definition
 assert(listed(members, "focus_storage") == "103/optional 102/recommended", listed(members, "focus_storage"))
 assert(listed(members, "spirits") == "100/stone 101/wood")

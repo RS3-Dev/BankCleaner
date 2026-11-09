@@ -25,6 +25,7 @@ local DefaultDiangoObjects = require("bankcleaner/data/diango_objects")
 local DefaultStormBarnObjects = require("bankcleaner/data/storm_barn_objects")
 local DefaultWorkbenchArtefactObjects = require("bankcleaner/data/workbench_artefact_objects")
 local DefaultMaterialStorageObjects = require("bankcleaner/data/material_storage_objects")
+local DefaultSeedBagObjects = require("bankcleaner/data/seed_bag_objects")
 
 -- Read a host field that can be unavailable while configuration loads
 local function read(value, field)
@@ -237,6 +238,12 @@ local DEFINITIONS = {
         sections = DefaultStormBarnObjects.sections,
     },
     {
+        id = "seed_bag",
+        label = "Seed Bag",
+        group = "Utility storage",
+        evaluate = catalogItems("seedBagObjects", "seed_bag_storable"),
+    },
+    {
         id = "workbench",
         label = "Archaeologist's Workbench",
         group = "Archaeology",
@@ -277,6 +284,7 @@ local CATALOGS = {
     stormBarnObjects = DefaultStormBarnObjects,
     workbenchArtefactObjects = DefaultWorkbenchArtefactObjects,
     materialStorageObjects = DefaultMaterialStorageObjects,
+    seedBagObjects = DefaultSeedBagObjects,
 }
 
 -- Load the catalogs, with optional test overrides

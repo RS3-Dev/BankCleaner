@@ -1,6 +1,5 @@
--- Load Bank Core from BANKCORE_ROOT beside the built Bank Cleaner
--- FAKE HOST: stand-in loader, components, and widgets, not the game client
--- Kept outside tests/ so tools/check.lua does not run it
+-- Load BANKCORE_ROOT beside built Bank Cleaner using a fake game host
+-- Keep this helper outside tests/ so tools/check.lua does not run it as a test
 
 local Harness = {}
 
@@ -45,9 +44,8 @@ function Harness.CoreRoot()
     return root
 end
 
--- Install the stand-in host, build Bank Cleaner, and create a loader
--- separateGlobals gives each plugin its own _G
--- cloneExports injects a data copy of each export
+-- Build Cleaner and create its test host and loader
+-- separateGlobals isolates each plugin's _G; cloneExports copies injected exports
 function Harness.new(name, options)
     options = options or {}
     local coreRoot = Harness.CoreRoot()

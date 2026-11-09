@@ -1,7 +1,5 @@
--- Build, run every test, and check the built runtime files
--- Usage from the repository root: lua54 tools/check.lua
--- Tests that load Bank Core read it from BANKCORE_ROOT
--- Each test runs in its own process since host stand-ins differ
+-- Run lua54 tools/check.lua from the repo root; set BANKCORE_ROOT for Core tests
+-- Build and check runtime files, running tests separately to isolate their fake hosts
 
 package.path = "./?.lua;" .. package.path
 

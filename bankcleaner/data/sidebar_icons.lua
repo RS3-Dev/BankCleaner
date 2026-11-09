@@ -18,6 +18,7 @@ return {
         focus_storage = 55336, -- Ectoplasm
         spirits = 44789, -- Rune ore box
         storm_barn = 3243, -- Farmer
+        seed_bag = 52212, -- Seed bag
         treasure_chest = 47434, -- Gilded treasure chest
         armour_case = 9828, -- Mahogany armour case
         magic_wardrobe = 9834, -- Gilded magic wardrobe

@@ -52,6 +52,7 @@ Favor straightforward Lua that is easy to follow and modify. Code should make th
 - Keep function summaries between 3 and 10 words when practical
 - Start function summaries with a plain action such as `Find`, `Save`, or `Restore`
 - Keep comments short, plain, and non-technical
+- Limit each comment block to two lines
 - Put detailed contracts and historical context in project documentation
 - Use inline comments only when an operation order would otherwise be unclear
 - Do not restate parameters or individual code lines

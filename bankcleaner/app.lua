@@ -59,6 +59,8 @@ function App.new()
         category = Categories.DEFINITIONS[1].id,
         -- A summary of the page last set
         publishedPage = nil,
+        -- Keep the open page's slots fixed once its initial scan finishes
+        pageFrozen = false,
         -- Column folders, a summary of their counts, and collapsed folders
         folders = nil,
         foldersSignature = nil,
@@ -80,6 +82,7 @@ function App.new()
                 function(categoryID) self:ChooseCategory(categoryID) end,
                 function(content)
                     self.search = tostring(content or "")
+                    self.pageFrozen = false
                     self:Publish()
                 end)
             self.sidebar:SetStatus(self.status)
@@ -117,21 +120,26 @@ function App:ShownCategory()
     return self.ext ~= nil and self.ext:IsOpen() and self.category or nil
 end
 
--- Give Bank Core the chosen category's page if it changed
--- Core redraws it in place while it is shown, and otherwise keeps it until opened
--- An empty page says scanning only until the first scan ends
+-- Build the chosen page, keeping its slots fixed after the initial scan
 function App:SetPage(members)
+    if self.pageFrozen and self:ShownCategory() ~= nil then return true end
     members = members or self.categories:Members(self.search)
     local page = Pages.Page(Categories.Definition(self.category), members[self.category],
         not self.categories:HasScanned(), self.search:match("%S") ~= nil)
     local signature = Pages.Signature(page)
-    if self.publishedPage == signature then return true end
+    if self.publishedPage == signature then
+        if self:ShownCategory() ~= nil and not self:IsBusy() then self.pageFrozen = true end
+        return true
+    end
     local ok, reason = self.ext:SetPage(page)
-    if ok then self.publishedPage = signature end
+    if ok then
+        self.publishedPage = signature
+        if self:ShownCategory() ~= nil and not self:IsBusy() then self.pageFrozen = true end
+    end
     return ok, reason
 end
 
--- Set the chosen category's page, and redraw the folders if their counts changed
+-- Publish unfrozen page changes and current folder counts
 function App:Publish()
     if self.ext == nil then return end
     local members = self.categories:Members(self.search)
@@ -154,7 +162,10 @@ function App:Connect()
         name = EXTENSION_NAME,
         icon = ICON,
         column = self.column,
-        onClose = function() self:RefreshSidebar() end,
+        onClose = function()
+            self.pageFrozen = false
+            self:RefreshSidebar()
+        end,
         onBankItems = function() self:OnBankItems() end,
         onBankClose = function() self:OnBankClose() end,
         onBankStateChanged = function(state) self:OnBankStateChanged(state) end,
@@ -173,6 +184,7 @@ function App:Disconnect()
     self.ext = nil
     self.bankBlocked, self.status = nil, nil
     self.publishedPage, self.foldersSignature = nil, nil
+    self.pageFrozen = false
     self.categories:Clear()
     if ext ~= nil then ext:Dispose() end
 end
@@ -224,10 +236,12 @@ function App:ChooseCategory(categoryID)
         self:ShowStatus(nil)
     else
         local previous = self.category
+        self.pageFrozen = false
         self.category = categoryID
         local shown, reason = self:SetPage()
         if shown then
             shown, reason = ext:Open()
+            if shown then self.pageFrozen = not self:IsBusy() end
         else
             self.category = previous
         end

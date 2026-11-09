@@ -8,6 +8,7 @@ local Diango = require("bankcleaner/data/diango_objects")
 local StormBarn = require("bankcleaner/data/storm_barn_objects")
 local Workbench = require("bankcleaner/data/workbench_artefact_objects")
 local Materials = require("bankcleaner/data/material_storage_objects")
+local Seeds = require("bankcleaner/data/seed_bag_objects")
 local ObjectQuests = require("bankcleaner/data/object_quests")
 local Categories = require("bankcleaner/cleanup/categories")
 
@@ -98,5 +99,25 @@ assert(not string.find(materialsText, "Imperial iron", 1, true) and not string.f
 -- Sectioned categories take their sections from the catalogs
 assert(Categories.Definition("diango").sections == Diango.sections)
 assert(Categories.Definition("storm_barn").sections == StormBarn.sections)
+
+-- Seed Bag: every seed column, including acorns, spores, Habitat and Arc seeds
+assert(count(Seeds) == 136, count(Seeds))
+for _, objectID in ipairs({ 5318, 5295, 5288, 5312, 5317, 5282, 6311, 19902, 38658, 48770, 58976, 64002, 64003 }) do
+    assert(Seeds[objectID] == true, objectID)
+end
+assert(Seeds[EGG] == nil and Seeds[52212] == nil and Seeds[5361] == nil) -- Willow sapling
+local seeds = Categories.new()
+seeds:Observe({
+    { objectID = 64003, quantity = 5 }, { objectID = EGG, quantity = 1 },
+    { objectID = 5318, quantity = 10 }, { objectID = 5288, quantity = 0 },
+    { objectID = 52212, quantity = 1 }, { objectID = 5318, quantity = 2 },
+})
+seeds:Step()
+local seedMembers = seeds:Members().seed_bag
+assert(#seedMembers == 3 and seedMembers[1].objectID == 64003
+    and seedMembers[2].objectID == 5318 and seedMembers[3].objectID == 5318)
+-- Withdrawn stacks leave the category immediately
+seeds:Observe({ { objectID = 64003, quantity = 0 } })
+assert(not seeds:IsScanning() and #seeds:Members().seed_bag == 0)
 
 print("cleanup_catalogs_test: ok")

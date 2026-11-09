@@ -20,7 +20,7 @@ Click the selected category again to return to the normal bank view. A category 
 | Folder | What it helps you find |
 | --- | --- |
 | Review | Finished-quest items, May's Storage Chest items, and Diango reclaimables |
-| Utility storage | Items for the Metal Bank, Clue Carrier, Tool Leprechaun, Focus Storage, spirit storage, and Storm Barn |
+| Utility storage | Items for the Metal Bank, Clue Carrier, Tool Leprechaun, Focus Storage, spirit storage, Storm Barn, and Seed Bag |
 | Player-owned house | Items supported by the house's storage categories |
 | Archaeology | Damaged artefacts for workbench storage and materials for material storage |
 
@@ -46,7 +46,7 @@ Storm Barn lists checked farm animals, not unchecked or tutorial animals. Workbe
 
 ## Refresh and troubleshoot
 
-The displayed page follows bank changes reported by Bank Core. Choosing the eraser icon checks items and quest status again.
+Item slots stay in place while a category is open, so withdrawing a stack leaves an empty slot instead of shifting the page. Close and reopen the category to refresh its layout. Changing the cleanup search also refreshes the layout. Quantities and sidebar counts still follow bank changes. Choosing the eraser icon checks items and quest status again.
 
 - **No eraser icon:** check that Bank Core and PrettyUI are enabled.
 - **No matching items:** the category only shows held stacks; bank placeholders are excluded.
