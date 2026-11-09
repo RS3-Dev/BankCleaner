@@ -1,6 +1,6 @@
 {
   "name": "bankcleaner",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Bank Cleaner: pages of bank items that belong in house, utility, and quest storage",
   "hasRibbonIcon": false,
   "requiredDependencies": {
