@@ -58,7 +58,7 @@ lua54 tools/build.lua
 lua54 tools/check.lua
 ```
 
-The build writes only `dist/release/bankcleaner/`: `main.lua`, `plugin.json`, and a `resources/` directory containing every supporting runtime module. It rewrites the packaged module paths and generated module eviction list to `resources/bankcleaner/...`; source paths stay unchanged. Release ZIPs wrap these three entries in a single `bank cleaner/` directory. The builder refuses output paths inside the source tree and removes only what its previous build wrote. The check builds into `dist/check`, runs every test, compiles every built file, and fails on unexpected globals, a runtime source the entry never loads, or anything from `reference/`, `tests/`, or `tools/` in the package. Tests that load Bank Core read it from `BANKCORE_ROOT`, which must be set.
+The build writes only `dist/release/bankcleaner/`: `main.lua`, `plugin.json`, and a `resources/` directory containing every supporting runtime module. It rewrites the packaged module paths and generated module eviction list to `resources/bankcleaner/...`; source paths stay unchanged. Release ZIPs wrap these three entries in a single `bankcleaner/` directory. The builder refuses output paths inside the source tree and removes only what its previous build wrote. The check builds into `dist/check`, runs every test, compiles every built file, and fails on unexpected globals, a runtime source the entry never loads, or anything from `reference/`, `tests/`, or `tools/` in the package. Tests that load Bank Core read it from `BANKCORE_ROOT`, which must be set.
 
 To install, copy `dist/release/bankcleaner/` into the client's plugins folder as `bankcleaner`.
 
