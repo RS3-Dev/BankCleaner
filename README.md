@@ -4,7 +4,7 @@ Bank Cleaner helps you find bank items that may belong in other storage, or that
 
 ## Before you start
 
-Enable **PrettyUI**, **Bank Core 1.5.0 or later**, and **Bank Cleaner** in the client's plugin manager. Open a bank, then click the eraser icon (**Bank Cleaner**) on the left rail to show the Cleanup folders. There is no separate ribbon panel.
+Enable **PrettyUI**, **Bank Core**, and **Bank Cleaner** in the client's plugin manager. Open a bank, then click the eraser icon (**Bank Cleaner**) on the left rail to show the Cleanup folders. There is no separate ribbon panel.
 
 ## Find items to move
 

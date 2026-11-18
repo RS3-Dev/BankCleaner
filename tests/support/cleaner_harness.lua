@@ -33,7 +33,7 @@ function Harness.CoreRoot()
         "onBankStateChanged(state)", "`filterActive`" }) do
         if not string.find(spec, needed, 1, true) then
             error("Bank Core at " .. root .. " lacks " .. needed .. "; set BANKCORE_ROOT "
-                .. "to a Core 1.5.0 or later checkout", 0)
+                .. "to a checkout providing the required API", 0)
         end
     end
     -- Resolve local test modules before Bank Core's helpers

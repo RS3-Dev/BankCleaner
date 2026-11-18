@@ -1,6 +1,6 @@
 # Tests
 
-Run from the repository root with Lua 5.4. Integration tests need a Bank Core 1.5.0 or later checkout with its test host helpers:
+Run from the repository root with Lua 5.4. Integration tests need a Bank Core checkout with the APIs checked by the harness and its test host helpers:
 
 ```powershell
 $env:BANKCORE_ROOT = "C:/path/to/bank-utilities"
