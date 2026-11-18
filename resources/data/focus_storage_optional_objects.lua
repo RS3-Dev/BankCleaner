@@ -1,0 +1,32 @@
+return {
+    [id.Obj.SPIDER_SILK_HOOD] = true, -- Spider silk hood
+    [id.Obj.SPIDER_SILK_ROBE_TOP] = true, -- Spider silk robe top
+    [id.Obj.SPIDER_SILK_ROBE_BOTTOM] = true, -- Spider silk robe bottom
+    [id.Obj.SPIDER_SILK_GLOVES] = true, -- Spider silk gloves
+    [id.Obj.SPIDER_SILK_BOOTS] = true, -- Spider silk boots
+    [id.Obj.MYSTIC_HAT] = true, -- Mystic hat
+    [id.Obj.MYSTIC_ROBE_TOP] = true, -- Mystic robe top
+    [id.Obj.MYSTIC_ROBE_BOTTOM] = true, -- Mystic robe bottom
+    [id.Obj.MYSTIC_GLOVES] = true, -- Mystic gloves
+    [id.Obj.MYSTIC_BOOTS] = true, -- Mystic boots
+    [id.Obj.GODWARS_ZAMORAK_ROBE_HEAD] = true, -- Hood of subjugation
+    [id.Obj.GODWARS_ZAMORAK_ROBE_BODY] = true, -- Garb of subjugation
+    [id.Obj.GODWARS_ZAMORAK_ROBE_LEGS] = true, -- Gown of subjugation
+    [id.Obj.GODWARS_ZAMORAK_ROBE_GLOVES] = true, -- Gloves of subjugation
+    [id.Obj.GODWARS_ZAMORAK_ROBE_BOOTS] = true, -- Boots of subjugation
+    [id.Obj.BONES] = true, -- Bones
+    [id.Obj.BIG_BONES] = true, -- Big bones
+    [id.Obj.BABYDRAGON_BONES] = true, -- Baby dragon bones
+    [id.Obj.WYVERN_BONES] = true, -- Wyvern bones
+    [id.Obj.DRAGON_BONES] = true, -- Dragon bones
+    [id.Obj.DAGANNOTH_KING_BONES] = true, -- Dagannoth bones
+    [id.Obj.HOTM_CREATURE_BONES] = true, -- Airut bones
+    [id.Obj.OURG_BONES] = true, -- Ourg bones (General Graardor)
+    [id.Obj.ZOGRE_ANCESTRAL_BONES_OURG] = true, -- Ourg bones
+    [id.Obj.ADAMANT_DRAGON_BONES] = true, -- Hardened dragon bones
+    [id.Obj.DRAGONKIN_BONES] = true, -- Dragonkin bones
+    [id.Obj.DINOSAUR_BONES] = true, -- Dinosaur bones
+    [id.Obj.FROST_DRAGON_BONES] = true, -- Frost dragon bones
+    [id.Obj.RUNE_DRAGON_BONES] = true, -- Reinforced dragon bones
+    [id.Obj.BLANKRUNE_HIGH] = true, -- Pure essence
+}

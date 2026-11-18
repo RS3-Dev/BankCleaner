@@ -1,16 +1,17 @@
 package.path = "./?.lua;" .. package.path
+id = require("tests/support/catalog_ids")
 
 -- Check the generated storage catalogs against known wiki items
--- Counts and names come from docs/CATALOG_SOURCES.md
+-- Regression fixtures for the RuneScape Wiki catalogs
 
-local StorageChest = require("bankcleaner/data/storage_chest_objects")
-local Diango = require("bankcleaner/data/diango_objects")
-local StormBarn = require("bankcleaner/data/storm_barn_objects")
-local Workbench = require("bankcleaner/data/workbench_artefact_objects")
-local Materials = require("bankcleaner/data/material_storage_objects")
-local Seeds = require("bankcleaner/data/seed_bag_objects")
-local ObjectQuests = require("bankcleaner/data/object_quests")
-local Categories = require("bankcleaner/cleanup/categories")
+local StorageChest = require("resources/data/storage_chest_objects")
+local Diango = require("resources/data/diango_objects")
+local StormBarn = require("resources/data/storm_barn_objects")
+local Workbench = require("resources/data/workbench_artefact_objects")
+local Materials = require("resources/data/material_storage_objects")
+local Seeds = require("resources/data/seed_bag_objects")
+local ObjectQuests = require("resources/data/object_quests")
+local Categories = require("resources/cleanup/categories")
 
 local EGG = 1944
 
@@ -23,7 +24,7 @@ end
 
 -- Read a catalog's source text
 local function source(name)
-    local file = assert(io.open("bankcleaner/data/" .. name .. ".lua", "rb"))
+    local file = assert(io.open("resources/data/" .. name .. ".lua", "rb"))
     local text = file:read("a")
     file:close()
     return text
@@ -102,22 +103,23 @@ assert(Categories.Definition("storm_barn").sections == StormBarn.sections)
 
 -- Seed Bag: every seed column, including acorns, spores, Habitat and Arc seeds
 assert(count(Seeds) == 136, count(Seeds))
-for _, objectID in ipairs({ 5318, 5295, 5288, 5312, 5317, 5282, 6311, 19902, 38658, 48770, 58976, 64002, 64003 }) do
+for _, objectID in ipairs({ 5318, 5295, 5288, 5312, 5317, 5282, 6311, 19902, 38658, 48770, 58976, 64308, 64309 }) do
     assert(Seeds[objectID] == true, objectID)
 end
+assert(Seeds[64002] == nil and Seeds[64003] == nil) -- Championship items are not seeds
 assert(Seeds[EGG] == nil and Seeds[52212] == nil and Seeds[5361] == nil) -- Willow sapling
 local seeds = Categories.new()
 seeds:Observe({
-    { objectID = 64003, quantity = 5 }, { objectID = EGG, quantity = 1 },
+    { objectID = 64309, quantity = 5 }, { objectID = EGG, quantity = 1 },
     { objectID = 5318, quantity = 10 }, { objectID = 5288, quantity = 0 },
     { objectID = 52212, quantity = 1 }, { objectID = 5318, quantity = 2 },
 })
 seeds:Step()
 local seedMembers = seeds:Members().seed_bag
-assert(#seedMembers == 3 and seedMembers[1].objectID == 64003
+assert(#seedMembers == 3 and seedMembers[1].objectID == 64309
     and seedMembers[2].objectID == 5318 and seedMembers[3].objectID == 5318)
 -- Withdrawn stacks leave the category immediately
-seeds:Observe({ { objectID = 64003, quantity = 0 } })
+seeds:Observe({ { objectID = 64309, quantity = 0 } })
 assert(not seeds:IsScanning() and #seeds:Members().seed_bag == 0)
 
 print("cleanup_catalogs_test: ok")

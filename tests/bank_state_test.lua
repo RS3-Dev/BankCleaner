@@ -1,7 +1,7 @@
 package.path = "./?.lua;./?/init.lua;" .. package.path
 
 -- Drive native restrictions through Core's public API and cloned plugin exports.
-local Harness = require("tools/test_support/cleaner_harness")
+local Harness = require("tests/support/cleaner_harness")
 local h = Harness.new("bank_state", { separateGlobals = true, cloneExports = true })
 h.bankHost:SetItems({ { 2349, 3, "Bronze bar" } })
 local core = h:LoadCore()

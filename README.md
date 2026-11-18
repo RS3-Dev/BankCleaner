@@ -38,7 +38,7 @@ Folder and category icons use the same item images, spacing and indentation as B
 - **Storage Chest → Non-reclaimable** means those listed quest items are not in the chest's catalog. It does not mean no other reclaim source exists.
 - **Diango Reclaimable** is grouped by the wiki's tables. Some returns cost a fee or depend on whether an outfit was combined, upgraded, or an add-on installed.
 
-The plugin cannot verify every reclaim condition for your account. The catalogs and their exceptions are documented in [catalog sources](docs/CATALOG_SOURCES.md).
+The plugin cannot verify every reclaim condition for your account. Catalog data comes from the RuneScape Wiki.
 
 ## Storage restrictions
 
@@ -55,8 +55,12 @@ Item slots stay in place while a category is open, so withdrawing a stack leaves
 
 Disable the older integrated `bankutils` or `bankutilities` plugin if you still have one installed.
 
-## For reviewers and developers
+## Development
 
-[Build, saved data, architecture, and validation limits](docs/DEVELOPMENT.md) · [Core contract](CONTRACT.md) · [catalog sources and exclusions](docs/CATALOG_SOURCES.md) · [code style](STYLE_GUIDE.md).
+The repository is the runtime: `main.lua`, `app.lua`, `plugin.json`, and supporting Lua modules in `resources/cleanup/` and `resources/data/`. No build step is needed.
 
-The catalogs are sourced data, not a guarantee of account-specific reclaim eligibility. Automated tests do not replace live-client checks.
+Lua tests and their helpers live in `tests/`. See [test instructions](tests/README.md).
+
+For a runtime ZIP, include only `main.lua`, `app.lua`, `plugin.json`, and `resources/` directly at the archive root. Exclude `tests/` and this README.
+
+Automated tests use a simulated host and do not replace live-client checks.

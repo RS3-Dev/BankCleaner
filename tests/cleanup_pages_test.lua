@@ -1,10 +1,11 @@
 package.path = "./?.lua;" .. package.path
+id = require("tests/support/catalog_ids")
 
 -- Encode categories as Bank Core pages and Cleanup column rows
 
-local Categories = require("bankcleaner/cleanup/categories")
-local Pages = require("bankcleaner/cleanup/pages")
-local Sidebar = require("bankcleaner/cleanup/sidebar")
+local Categories = require("resources/cleanup/categories")
+local Pages = require("resources/cleanup/pages")
+local Sidebar = require("resources/cleanup/sidebar")
 
 local metal = Categories.Definition("metal_bank")
 local focus = Categories.Definition("focus_storage")

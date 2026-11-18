@@ -3,7 +3,7 @@ package.path = "./?.lua;./?/init.lua;" .. package.path
 -- Drive the Cleanup column's folders through the real Bank Core
 -- FAKE HOST: stand-in loader, components, and widgets, not the game client
 
-local Harness = require("tools/test_support/cleaner_harness")
+local Harness = require("tests/support/cleaner_harness")
 
 local BRONZE_BAR, IRON_BAR, EGG = 2349, 2351, 1944
 local h = Harness.new("cleanup_sidebar")
@@ -15,7 +15,7 @@ local session, layout = h:OpenBank()
 h:ChooseIcon("bankcleaner")
 h:Tick(4)
 local app = h:App()
-local Sidebar = h.cleaner.env.package.loaded["resources/bankcleaner/cleanup/sidebar"]
+local Sidebar = h.cleaner.env.package.loaded["resources/cleanup/sidebar"]
 
 -- Find a drawn row by its entry ID
 local function row(entryID)

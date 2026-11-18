@@ -3,7 +3,7 @@ package.path = "./?.lua;./?/init.lua;" .. package.path
 -- Check required load order and defensive dependency updates in isolated plugins
 -- FAKE HOST: stand-in loader, components, and widgets, not the game client
 
-local Harness = require("tools/test_support/cleaner_harness")
+local Harness = require("tests/support/cleaner_harness")
 
 -- Production requires Core before Cleaner; reloading Cleaner reconnects after Core reloads.
 local required = Harness.new("plugin_required")
@@ -46,7 +46,7 @@ for _, subscription in ipairs(h.host:SubscriptionsOf("bankcleaner")) do
 end
 -- Only Bank Cleaner's own modules are in its cache
 for moduleName in pairs(cleaner.env.package.loaded) do
-    assert(string.sub(moduleName, 1, 22) == "resources/bankcleaner/", moduleName .. " is not a Bank Cleaner module")
+    assert(string.sub(moduleName, 1, 22) == "resources/", moduleName .. " is not a Bank Cleaner module")
 end
 
 -- A late Core connects through the dependency update
@@ -113,11 +113,11 @@ h:Tick(4)
 assert(reloaded.sidebar ~= nil and string.find(reloaded.foldersSignature, "metal_bank=1", 1, true))
 
 -- A reload that keeps cached modules still runs fresh ones
-local cachedApp = h.cleaner.env.package.loaded["resources/bankcleaner/app"]
+local cachedApp = h.cleaner.env.package.loaded["app"]
 h.host:Reload("bankcleaner")
 local hot = h:App()
 assert(hot ~= reloaded and reloaded.shutDown and live(hot.ext))
-assert(h.cleaner.env.package.loaded["resources/bankcleaner/app"] ~= cachedApp)
+assert(h.cleaner.env.package.loaded["app"] ~= cachedApp)
 
 -- Unloading mid-scan leaves no icon, page, callback, or subscription
 local many = {}

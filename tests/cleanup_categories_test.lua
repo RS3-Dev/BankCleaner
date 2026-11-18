@@ -1,4 +1,5 @@
 package.path = "./?.lua;" .. package.path
+id = require("tests/support/catalog_ids")
 
 -- Classify objects using stand-in catalogs and quests
 
@@ -18,7 +19,7 @@ config = {
     },
 }
 
-local Categories = require("bankcleaner/cleanup/categories")
+local Categories = require("resources/cleanup/categories")
 
 local CATALOGS = {
     objectQuests = { [100] = { 1 }, [101] = { 1, 2 }, [103] = { 1, 3 }, [105] = { 4 }, [106] = {} },

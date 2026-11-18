@@ -1,9 +1,9 @@
 package.path = "./?.lua;./?/init.lua;" .. package.path
 
--- Drive the built Bank Cleaner through the real Bank Core
+-- Drive Bank Cleaner through the real Bank Core
 -- FAKE HOST: stand-in loader, components, and widgets, not the game client
 
-local Harness = require("tools/test_support/cleaner_harness")
+local Harness = require("tests/support/cleaner_harness")
 
 local BRONZE_BAR, IRON_BAR = 2349, 2351
 local MEMENTO, SILK_HOOD = 55623, 25835
@@ -22,7 +22,7 @@ local other = assert(core.result.Register({ id = "a.other", name = "Other", icon
     column = { mount = function() end } }))
 h:LoadCleaner()
 local app = h:App()
-local Sidebar = h.cleaner.env.package.loaded["resources/bankcleaner/cleanup/sidebar"]
+local Sidebar = h.cleaner.env.package.loaded["resources/cleanup/sidebar"]
 assert(app.ext ~= nil)
 local session, layout = h:OpenBank()
 local service = session.pluginPages
@@ -252,7 +252,7 @@ openRow("quest_items")
 assert(shown() == "[Quest Items] 271=1", shown())
 
 -- A tall category keeps its scroll while it is rescanned
-local Diango = h.cleaner.env.package.loaded["resources/bankcleaner/data/diango_objects"]
+local Diango = h.cleaner.env.package.loaded["resources/data/diango_objects"]
 local tall = {}
 for objectID in pairs(Diango.objects) do tall[#tall + 1] = objectID end
 table.sort(tall)
@@ -335,20 +335,20 @@ assert(layout.shownPage.title == "")
 
 -- Seed Bag retains withdrawn seeds until the page is reopened
 host:SetItems({ { 5318, 10, "Potato seed" }, { EGG, 1, "Egg" },
-    { 64003, 3, "Bogwart spore" }, { 5288, 0, "Papaya tree seed" } })
+    { 64309, 3, "Bogwart spore" }, { 5288, 0, "Papaya tree seed" } })
 layout:HandleInventoryUpdate()
 h:Tick(6)
 openRow("seed_bag")
-assert(layout.shownPage.title == "Seed Bag" and shown() == "[Seed Bag] 5318=10 64003=3", shown())
+assert(layout.shownPage.title == "Seed Bag" and shown() == "[Seed Bag] 5318=10 64309=3", shown())
 assert(string.find(columnRows(), "Seed Bag=2", 1, true), columnRows())
-host:SetItems({ { 64003, 3, "Bogwart spore" } })
+host:SetItems({ { 64309, 3, "Bogwart spore" } })
 layout:HandleInventoryUpdate()
 h:Tick(6)
-assert(shown() == "[Seed Bag] 5318=0 64003=3" and string.find(columnRows(), "Seed Bag=1", 1, true), shown())
+assert(shown() == "[Seed Bag] 5318=0 64309=3" and string.find(columnRows(), "Seed Bag=1", 1, true), shown())
 assert(app.sidebar.list:Click("seed_bag"))
 h:Tick(2)
 openRow("seed_bag")
-assert(shown() == "[Seed Bag] 64003=3", shown())
+assert(shown() == "[Seed Bag] 64309=3", shown())
 
 -- Closing the bank drops the snapshot until it is read again, and shows nothing
 session:CloseBank()
