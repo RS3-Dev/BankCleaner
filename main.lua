@@ -29,6 +29,7 @@ if package ~= nil and package.loaded ~= nil then
         "resources/data/material_storage_objects",
         "resources/data/metal_bank_objects",
         "resources/data/object_quests",
+        "resources/data/polypore_merchant_objects",
         "resources/data/seed_bag_objects",
         "resources/data/sidebar_icons",
         "resources/data/stone_spirit_objects",

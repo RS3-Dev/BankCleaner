@@ -28,5 +28,6 @@ return {
         bookcase = id.Obj.CON_CONTRACTS_BUILD_BOOKCASE_MAHOGANY, -- Bookcase (mahogany)
         workbench = id.Obj.ARCH_RESTORATION_VENATOR_LIGHT_CROSSBOW_DAMAGED, -- Venator light crossbow (damaged)
         material_storage = id.Obj.ARCH_MATERIAL_TYRIAN_PURPLE, -- Tyrian purple
+        polypore_merchant = id.Obj.POLYPORE_SPORE, -- Polypore spore
     },
 }
