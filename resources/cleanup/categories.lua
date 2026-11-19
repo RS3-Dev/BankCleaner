@@ -26,6 +26,7 @@ local DefaultStormBarnObjects = require("resources/data/storm_barn_objects")
 local DefaultWorkbenchArtefactObjects = require("resources/data/workbench_artefact_objects")
 local DefaultMaterialStorageObjects = require("resources/data/material_storage_objects")
 local DefaultSeedBagObjects = require("resources/data/seed_bag_objects")
+local DefaultPolyporeMerchantObjects = require("resources/data/polypore_merchant_objects")
 
 -- Read a host field that can be unavailable while configuration loads
 local function read(value, field)
@@ -255,6 +256,12 @@ local DEFINITIONS = {
         group = "Archaeology",
         evaluate = catalogItems("materialStorageObjects", "material_storage_storable"),
     },
+    {
+        id = "polypore_merchant",
+        label = "Polypore merchant",
+        group = "Utility storage",
+        evaluate = catalogItems("polyporeMerchantObjects", "polypore_merchant_storable"),
+    },
 }
 
 -- The categories' group headings, in the order the column shows them
@@ -285,6 +292,7 @@ local CATALOGS = {
     workbenchArtefactObjects = DefaultWorkbenchArtefactObjects,
     materialStorageObjects = DefaultMaterialStorageObjects,
     seedBagObjects = DefaultSeedBagObjects,
+    polyporeMerchantObjects = DefaultPolyporeMerchantObjects,
 }
 
 -- Load the catalogs, with optional test overrides
