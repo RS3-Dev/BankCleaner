@@ -341,7 +341,7 @@ return {
     [id.Obj.ELFCITY_SKILLER_LEGS] = true, -- Prifddinian worker's trousers
     [id.Obj.MACRO_PRINCE_LEGS] = true, -- Prince leggings
     [id.Obj.MACRO_PRINCE_TORSO] = true, -- Prince tunic
-    [id.Obj.COMBATV2_ITEM_EFFECT_STRUCT] = true, -- Princess blouse
+    [id.Obj.MACRO_PRINCESS_TORSO] = true, -- Princess blouse
     [id.Obj.MACRO_PRINCESS_LEGS] = true, -- Princess skirt
     [id.Obj.LOY_JUNGLE_MALE_HEAD_V1] = true, -- Samba headdress (blue, male) / Samba headdress (blue, female)
     [id.Obj.LOY_JUNGLE_MALE_HEAD_V2] = true, -- Samba headdress (blue, male) / Samba headdress (blue, female)

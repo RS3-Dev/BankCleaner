@@ -88,7 +88,7 @@ return {
     [id.Obj.SPLITBARK_BODY] = true, -- Splitbark body
     [id.Obj.SPLITBARK_GREAVES] = true, -- Splitbark boots
     [id.Obj.SPLITBARK_GAUNTLETS] = true, -- Splitbark gauntlets
-    [id.Obj.ITEM_DEGRADE_MAXDEGRADE] = true, -- Splitbark helm
+    [id.Obj.SPLITBARK_HELM] = true, -- Splitbark helm
     [id.Obj.SPLITBARK_LEGS] = true, -- Splitbark legs
     [id.Obj.SPLITBARK_SHIELD] = true, -- Splitbark shield
     [id.Obj.MOB_REWARD_LVL3_FEET] = true, -- War-chief boots

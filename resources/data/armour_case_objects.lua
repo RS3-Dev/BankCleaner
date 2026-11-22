@@ -1,5 +1,5 @@
 return {
-    [id.Obj.COMBATV2_WEAPON_WAND] = true, -- Agile legs
+    [id.Obj.AGILE_AGILITY_LEGS] = true, -- Agile legs
     [id.Obj.AGILE_AGILITY_TOP] = true, -- Agile top
     [id.Obj.GODWARS2_ZAROS_BOOTS] = true, -- Ancient ceremonial boots
     [id.Obj.GODWARS2_ZAROS_GLOVES] = true, -- Ancient ceremonial gloves
@@ -25,7 +25,7 @@ return {
     [id.Obj.OWEN1_CAPTAIN_BLACK_PLATELEGS] = true, -- Black Knight captain's gown
     [id.Obj.OWEN1_CAPTAIN_BLACK_FULL_HELM] = true, -- Black Knight captain's helm
     [id.Obj.BREW_UNIFORM_BLACK] = true, -- Black naval shirt
-    [id.Obj.COLLECTION_TRACKING_MAX] = true, -- Black navy slacks
+    [id.Obj.BREW_NAVY_SLACKS_BLACK] = true, -- Black navy slacks
     [id.Obj.BREW_TRICORN_BLACK] = true, -- Black tricorn hat
     [id.Obj.BREW_UNIFORM_BLUE] = true, -- Blue naval shirt
     [id.Obj.BREW_NAVY_SLACKS_BLUE] = true, -- Blue navy slacks
@@ -33,7 +33,7 @@ return {
     [id.Obj.ZEP_BOMBER_CAP] = true, -- Bomber cap
     [id.Obj.ZEP_BOMBER_JACKET] = true, -- Bomber jacket
     [id.Obj.BREW_UNIFORM_BROWN] = true, -- Brown naval shirt
-    [id.Obj.COLLECTION_TRACKING_VAR] = true, -- Brown navy slacks
+    [id.Obj.BREW_NAVY_SLACKS_BROWN] = true, -- Brown navy slacks
     [id.Obj.BREW_TRICORN_BROWN] = true, -- Brown tricorn hat
     [id.Obj.TOL_PLAYER_CONSTRUCTION_BOOTS] = true, -- Builder's boots
     [id.Obj.TOL_PLAYER_CONSTRUCTION_SHIRT] = true, -- Builder's shirt
@@ -186,8 +186,8 @@ return {
     [id.Obj.BARROWS_KARIL_BODY_GOLDEN_USED] = true, -- Golden Karil's top
     [id.Obj.BARROWS_KARIL_BODY_GOLDEN_BROKEN] = true, -- Golden Karil's top
     [id.Obj.SISTER_BARROWS_LINZA_BODY_GOLDEN] = true, -- Golden Linza's cuirass
-    [id.Obj.COMBATV2_WEAPON_ARMGUARD] = true, -- Golden Linza's cuirass
-    [id.Obj.COMBATV2_WEAPON_LANTERN] = true, -- Golden Linza's cuirass
+    [id.Obj.SISTER_BARROWS_LINZA_BODY_GOLDEN_USED] = true, -- Golden Linza's cuirass
+    [id.Obj.SISTER_BARROWS_LINZA_BODY_GOLDEN_BROKEN] = true, -- Golden Linza's cuirass
     [id.Obj.SISTER_BARROWS_LINZA_LEGS_GOLDEN] = true, -- Golden Linza's greaves
     [id.Obj.SISTER_BARROWS_LINZA_LEGS_GOLDEN_USED] = true, -- Golden Linza's greaves
     [id.Obj.SISTER_BARROWS_LINZA_LEGS_GOLDEN_BROKEN] = true, -- Golden Linza's greaves
@@ -357,7 +357,7 @@ return {
     [id.Obj.BASIC_TK_RANK2_HELM] = true, -- Proselyte sallet
     [id.Obj.BASIC_TK_RANK2_PLATESKIRT] = true, -- Proselyte tasset
     [id.Obj.BREW_UNIFORM_PURPLE] = true, -- Purple naval shirt
-    [id.Obj.COLLECTION_TRACKING_QUICKCHAT] = true, -- Purple navy slacks
+    [id.Obj.BREW_NAVY_SLACKS_PURPLE] = true, -- Purple navy slacks
     [id.Obj.BREW_TRICORN_PURPLE] = true, -- Purple tricorn hat
     [id.Obj.BARBASSAULT_PENANCE_RANGER_HAT] = true, -- Ranger hat
     [id.Obj.BREW_UNIFORM_RED] = true, -- Red naval shirt
@@ -471,7 +471,7 @@ return {
     [id.Obj.GAME_PEST_MAGE_HELM] = true, -- Void knight mage helm
     [id.Obj.GAME_PEST_MELEE_HELM] = true, -- Void knight melee helm
     [id.Obj.GAME_PEST_ARCHER_HELM] = true, -- Void knight ranger helm
-    [id.Obj.DYE_RESULT_SOUL] = true, -- Void knight robes
+    [id.Obj.PEST_VOID_KNIGHT_ROBES] = true, -- Void knight robes
     [id.Obj.PEST_VOID_KNIGHT_TOP] = true, -- Void knight top
     [id.Obj.VYRE_LEGS] = true, -- Vyrewatch legs
     [id.Obj.VYRE_SHOES] = true, -- Vyrewatch shoes

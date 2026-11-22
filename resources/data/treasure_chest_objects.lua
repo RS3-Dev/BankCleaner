@@ -71,7 +71,7 @@ return {
     [id.Obj.TRAIL_ELEGANT_PANTS_MALE] = true, -- Black elegant legs
     [id.Obj.TRAIL_ELEGANT_SHIRT_MALE] = true, -- Black elegant shirt
     [id.Obj.BLACK_FULL_HELM_GOLD] = true, -- Black full helm (g)
-    [id.Obj.MTX_WAND_BAS] = true, -- Black full helm (t)
+    [id.Obj.BLACK_FULL_HELM_TRIM] = true, -- Black full helm (t)
     [id.Obj.HEADBAND_BLACK] = true, -- Black headband
     [id.Obj.TRAIL_HERALDIC_HELM_1_BLACK] = true, -- Black helm (h1)
     [id.Obj.TRAIL_HERALDIC_HELM_2_BLACK] = true, -- Black helm (h2)
@@ -154,7 +154,7 @@ return {
     [id.Obj.TRAIL_CAT_HEAD] = true, -- Cat mask
     [id.Obj.TRAIL_ANIMAL_PLAIN_STAFF] = true, -- Cat staff
     [id.Obj.PIRATE_HAT_CAVALIER_HIGHWAY_MASK] = true, -- Cavalier and mask
-    [id.Obj.RECIPE_REQUIREMENT_TYPE_2] = true, -- Dark cavalier
+    [id.Obj.CAVALIER_DARK] = true, -- Dark cavalier
     [id.Obj.TRAIL17_DRAGON_CANE] = true, -- Dragon cane
     [id.Obj.TRAIL_DRAGON_FULL_HELM_ORNATE] = true, -- Dragon full helm (or)
     [id.Obj.TRAIL_DRAGON_FULL_HELM_SPIKY] = true, -- Dragon full helm (sp)
@@ -243,7 +243,7 @@ return {
     [id.Obj.TRAIL_ELEGANT_PANTS_MALE_R] = true, -- Red elegant legs
     [id.Obj.TRAIL_ELEGANT_SHIRT_MALE_R] = true, -- Red elegant shirt
     [id.Obj.TRAIL_ELEGANT_PANTS_FEMALE_R] = true, -- Red elegant skirt
-    [id.Obj.RECIPE_REQUIREMENT_VALUE_1] = true, -- Red headband
+    [id.Obj.HEADBAND_RED] = true, -- Red headband
     [id.Obj.TRAIL17_RING_OF_COINS] = true, -- Ring of coins
     [id.Obj.TRAIL17_RING_OF_TREE] = true, -- Ring of trees
     [id.Obj.ROBINHOODHAT] = true, -- Robin Hood hat
@@ -264,7 +264,7 @@ return {
     [id.Obj.RUNE_FULL_HELM_GOLD] = true, -- Rune full helm (g)
     [id.Obj.RUNE_FULL_HELM_GOLDPLATE] = true, -- Rune full helm (Gilded)
     [id.Obj.RUNE_FULL_HELM_GUTHIX] = true, -- Rune full helm (Guthix)
-    [id.Obj.RECIPE_INGREDIENT_NUMBER_1] = true, -- Rune full helm (Saradomin)
+    [id.Obj.RUNE_FULL_HELM_SARADOMIN] = true, -- Rune full helm (Saradomin)
     [id.Obj.RUNE_FULL_HELM_TRIM] = true, -- Rune full helm (t)
     [id.Obj.RUNE_FULL_HELM_ZAMORAK] = true, -- Rune full helm (Zamorak)
     [id.Obj.TRAIL_HERALDIC_HELM_1_RUNE] = true, -- Rune helm (h1)
@@ -277,7 +277,7 @@ return {
     [id.Obj.RUNE_KITESHIELD_BANDOS] = true, -- Rune kiteshield (Bandos)
     [id.Obj.RUNE_KITESHIELD_GOLD] = true, -- Rune kiteshield (g)
     [id.Obj.RUNE_KITESHIELD_GOLDPLATE] = true, -- Rune kiteshield (Gilded)
-    [id.Obj.RECIPE_INGREDIENT_1_MULTIPLE] = true, -- Rune kiteshield (Guthix)
+    [id.Obj.RUNE_KITESHIELD_GUTHIX] = true, -- Rune kiteshield (Guthix)
     [id.Obj.RUNE_KITESHIELD_SARADOMIN] = true, -- Rune kiteshield (Saradomin)
     [id.Obj.RUNE_KITESHIELD_TRIM] = true, -- Rune kiteshield (t)
     [id.Obj.RUNE_KITESHIELD_ZAMORAK] = true, -- Rune kiteshield (Zamorak)
@@ -308,7 +308,7 @@ return {
     [id.Obj.TRAIL_HERALDIC_PLATELEGS_5_RUNE] = true, -- Rune platelegs (h5)
     [id.Obj.RUNE_PLATELEGS_SARADOMIN] = true, -- Rune platelegs (Saradomin)
     [id.Obj.RUNE_PLATELEGS_TRIM] = true, -- Rune platelegs (t)
-    [id.Obj.RECIPE_INGREDIENT_TYPE_1] = true, -- Rune platelegs (Zamorak)
+    [id.Obj.RUNE_PLATELEGS_ZAMORAK] = true, -- Rune platelegs (Zamorak)
     [id.Obj.RUNE_PLATESKIRT_ZAROS] = true, -- Rune plateskirt (Ancient)
     [id.Obj.RUNE_PLATESKIRT_ARMADYL] = true, -- Rune plateskirt (Armadyl)
     [id.Obj.RUNE_PLATESKIRT_BANDOS] = true, -- Rune plateskirt (Bandos)
