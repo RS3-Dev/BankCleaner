@@ -27,7 +27,7 @@ return {
     [id.Obj.MARK_OF_HAZEEL] = { id.Quest.HAZEEL_CULT }, -- Hazeel's mark (wiki: Hazeel Cult)
     [id.Obj.EMPTY_OGRE_BELLOWS] = { id.Quest.BIG_CHOMPY_BIRD_HUNTING }, -- Ogre bellows ((0)) (wiki: Big Chompy Bird Hunting)
     [id.Obj.FILLED_OGRE_BELLOW3] = { id.Quest.BIG_CHOMPY_BIRD_HUNTING }, -- Ogre bellows (3) ((3)) (wiki: Big Chompy Bird Hunting)
-    [id.Obj.COMBATV2_WHICH_ELEMENT] = { id.Quest.BIG_CHOMPY_BIRD_HUNTING }, -- Ogre bellows (2) ((2)) (wiki: Big Chompy Bird Hunting)
+    [id.Obj.FILLED_OGRE_BELLOW2] = { id.Quest.BIG_CHOMPY_BIRD_HUNTING }, -- Ogre bellows (2) ((2)) (wiki: Big Chompy Bird Hunting)
     [id.Obj.FILLED_OGRE_BELLOW1] = { id.Quest.BIG_CHOMPY_BIRD_HUNTING }, -- Ogre bellows (1) ((1)) (wiki: Big Chompy Bird Hunting)
     [id.Obj.REGICIDE_QUEST_KINGS_SUMMONS] = { id.Quest.REGICIDE }, -- King's message (wiki: Regicide)
     [id.Obj.REGICIDE_CRYSTAL_PENDANT] = { id.Quest.REGICIDE }, -- Crystal pendant (wiki: Regicide)

@@ -136,7 +136,7 @@ return {
     [id.Obj.MCANNONBOOK] = true, -- Instruction manual
     [id.Obj.OPN_CLUES_BOOK] = true, -- Investigator's notebook
     [id.Obj.MAHMEM_BOOK_JHALLAN] = true, -- Jhallan's memory (book)
-    [id.Obj.BANK_WEAR_PREVENTED] = true, -- Journal (Horror from the Deep)
+    [id.Obj.HORROR_DIARY1] = true, -- Journal (Horror from the Deep)
     [id.Obj.MAKINGHISTORY_JOURNAL] = true, -- Journal (Making History)
     [id.Obj.ASH1_NOTE] = true, -- Journal entry
     [id.Obj.TZHAAR2_JOURNAL] = true, -- Journal of Perjour
@@ -253,7 +253,7 @@ return {
     [id.Obj.QUEST_VORKATH_SHADOW_REALM_BOOK] = true, -- The Shadow Realm
     [id.Obj.THE_SHIELD_OF_ARRAV] = true, -- The Shield of Arrav book
     [id.Obj.BURGH_BOOK_SEVENWARRIORS] = true, -- The Sleeping Seven
-    [id.Obj.ARCH_SOIL_MOSSY_PEAT] = true, -- The Tale of Hawthorn
+    [id.Obj.AMBERFELL_LORE_BOOK_1] = true, -- The Tale of Hawthorn
     [id.Obj.HLM_CAMEL_BOOK] = true, -- The Ugthanatos
     [id.Obj.ELFCITY_LOREBOOK] = true, -- The Voice of the Elders
     [id.Obj.QBD2_JOURNAL3] = true, -- Third dragonkin journal
