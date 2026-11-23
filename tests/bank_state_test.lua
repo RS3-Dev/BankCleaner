@@ -45,6 +45,13 @@ local function ready()
 end
 
 -- Restrictions close the page silently; a category click explains the refusal
+local highlight = app.ext.HighlightAllItems
+local highlights = 0
+app.ext.HighlightAllItems = function(self)
+    assert(self == app.ext)
+    highlights = highlights + 1
+    return false, "unavailable"
+end
 for _, case in ipairs({
     { "bankOpen", false, "Open your bank to view cleanup items." },
     { "viewAll", false, 'Select "All Items" to view cleanup items.' },
@@ -54,12 +61,15 @@ for _, case in ipairs({
 }) do
     local state = ready()
     state[case[1]] = case[2]
+    local before = highlights
     listener(state)
+    assert(highlights == before, "passive state changes must not highlight")
     assert(app:ShownCategory() == nil and layout.shownPage == nil, case[1])
     assert(not app.scanning and app.status == nil and banner.hidden, case[1])
     local getState = app.ext.GetBankState
     app.ext.GetBankState = function() return state end
     assert(not app:ChooseCategory("focus_storage"))
+    assert(highlights == before + (case[1] == "viewAll" and 1 or 0), case[1])
     assert(app.status == case[3], case[1])
     assert(not app.sidebar.statusBanner.hidden and app.sidebar.statusText.content == app.status)
     assert(app.sidebar == sidebar and sidebar.list == list and sidebar.search == field)
@@ -71,6 +81,20 @@ for _, case in ipairs({
     assert(not app.ext:IsOpen() and app.status == nil and app.sidebar.statusBanner.hidden)
     assert(app:ChooseCategory("metal_bank"))
 end
+
+-- Older Core releases omit the helper; blocked clicks still show the banner.
+app.ext.HighlightAllItems = nil
+local getState = app.ext.GetBankState
+app.ext.GetBankState = function()
+    local state = ready()
+    state.viewAll = false
+    return state
+end
+assert(not app:ChooseCategory("focus_storage"))
+assert(app.status == 'Select "All Items" to view cleanup items.')
+app.ext.GetBankState = getState
+app.ext.HighlightAllItems = highlight
+listener(ready())
 
 -- Changed restrictions clear old warnings; clicks show the highest priority
 local combined = ready()
