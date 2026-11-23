@@ -234,6 +234,9 @@ function App:ChooseCategory(categoryID)
     if ext == nil then return end
     local blocked = self:OnBankStateChanged(ext:GetBankState())
     if blocked ~= nil then
+        if blocked == "not_all_items" and ext.HighlightAllItems ~= nil then
+            ext:HighlightAllItems()
+        end
         self:ShowStatus(refusal(blocked))
         return false
     end
